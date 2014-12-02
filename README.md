@@ -1,0 +1,4 @@
+mord
+====
+
+Ordinal regression algorithms
