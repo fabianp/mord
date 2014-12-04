@@ -12,10 +12,6 @@ from sklearn import base, metrics, svm, linear_model
 from joblib import Memory
 
 
-METRIC = lambda x, y: - metrics.mean_absolute_error(x, y)
-# METRIC = lambda x, y: - metrics.zero_one_loss(x, y, normalize=True)
-# METRIC = lambda x, y: - pairwise_disagreement(x, y)
-
 def sigmoid(t):
     # sigmoid function, 1 / (1 + exp(-t))
     # stable computation
@@ -194,16 +190,19 @@ def multiclass_predict(X, W):
     return np.argmax(XW, axis=1)
 
 
-class MarginOR(base.BaseEstimator):
-    def __init__(self, n_class=2, alpha=1., mode='AE',
+class OrdinalLogistic(base.BaseEstimator):
+    """
+    Classifier that implements the ordinal logistic model
+    """
+    def __init__(self, alpha=1., mode='AE',
         verbose=0, maxiter=10000):
         self.alpha = alpha
         self.mode = mode
-        self.n_class = n_class
         self.verbose = verbose
         self.maxiter = maxiter
 
     def fit(self, X, y):
+        self.n_class = np.unique(y).size
         self.w_, self.theta_ = threshold_fit(X, y, self.alpha, self.n_class,
             mode=self.mode, verbose=self.verbose)
         return self
@@ -213,27 +212,13 @@ class MarginOR(base.BaseEstimator):
 
     def score(self, X, y):
         pred = self.predict(X)
-        return METRIC(pred, y)
+        if self.mode == 'AE':
+            return - metrics.mean_absolute_error(pred, y)
+        elif self.mode == '0-1':
+            return metrics.accuracy_score(pred, y)
+        else:
+            raise NotImplementedError
 
-
-class MulticlassOR(base.BaseEstimator):
-    def __init__(self, n_class=2, alpha=1.,
-        verbose=0, maxiter=10000):
-        self.alpha = alpha
-        self.n_class = n_class
-        self.verbose = verbose
-        self.maxiter = maxiter
-
-    def fit(self, X, y):
-        self.W_ = multiclass_fit(X, y, self.alpha, self.n_class)
-        return self
-
-    def predict(self, X):
-        return multiclass_predict(X, self.W_)
-
-    def score(self, X, y):
-        pred = self.predict(X)
-        return METRIC(pred, y)
 
 class RidgeOR(linear_model.Ridge):
     """
@@ -266,6 +251,7 @@ if hasattr(svm, 'LinearSVR'):
         """
 
         def fit(self, X, y):
+            self.epsilon = 0.
             self.unique_y_ = np.unique(y)
             svm.LinearSVR.fit(self, X, y)
             return self
