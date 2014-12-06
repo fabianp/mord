@@ -41,16 +41,16 @@ def obj_margin(x0, X, y, alpha, n_class, weights):
     c = x0[X.shape[1]:]
     theta = np.cumsum(c)
     #theta = np.sort(theta)
-    W = weights[y]
+    loss_fd = weights[y]
 
     Xw = X.dot(w)
     Alpha = theta[:, None] - Xw # (n_class - 1, n_samples)
-    idx = np.arange(n_class - 1)[:, None] < y
-    Alpha[idx] *= -1
+    S = np.sign(np.arange(n_class - 1)[:, None] - y + 0.5)
 
-    return np.sum(W.T * log_loss(Alpha)) / float(X.shape[0]) + \
-           alpha * (linalg.norm(w) ** 2)
-
+    obj = np.sum(loss_fd.T * log_loss(S * Alpha)) + \
+           alpha * 0.5 * (linalg.norm(w) ** 2)
+    #print obj
+    return obj
 
 def grad_margin(x0, X, y, alpha, n_class, weights):
     """
@@ -61,15 +61,15 @@ def grad_margin(x0, X, y, alpha, n_class, weights):
     c = x0[X.shape[1]:]
     theta = np.cumsum(c)
     #theta = np.sort(theta)
-    W = weights[y]
+    loss_fd = weights[y]
 
     Xw = X.dot(w)
     Alpha = theta[:, None] - Xw # (n_class - 1, n_samples)
-    idx = np.arange(n_class - 1)[:, None] < y
-    Alpha[idx] *= -1
-    W[idx.T] *= -1
+    S = np.sign(np.arange(n_class - 1)[:, None] - y + 0.5)
+    # Alpha[idx] *= -1
+    # W[idx.T] *= -1
 
-    Sigma = W.T * sigmoid(-Alpha)
+    Sigma = S * loss_fd.T * sigmoid(-S * Alpha)
 
     grad_w = X.T.dot(Sigma.sum(0)) / float(X.shape[0]) + alpha * 2 * w
 
@@ -103,9 +103,8 @@ def obj_multiclass(x0, X, y, alpha, n_class):
 
 
 
-
 def threshold_fit(X, y, alpha, n_class, mode='AE', verbose=False,
-                  maxiter=10000, bounds=False):
+                  maxiter=1000, bounds=False):
     """
     Solve the general threshold-based ordinal regression model
     using the logistic loss as surrogate of the 0-1 loss
@@ -121,22 +120,21 @@ def threshold_fit(X, y, alpha, n_class, mode='AE', verbose=False,
     n_samples, n_features = X.shape
 
     if mode == 'AE':
-        weights = np.ones((n_class, n_class - 1))
+        # loss forward difference
+        loss_fd = np.ones((n_class, n_class - 1))
     elif mode == '0-1':
-        weights = np.diag(np.ones(n_class - 1)) + \
+        loss_fd = np.diag(np.ones(n_class - 1)) + \
             np.diag(np.ones(n_class - 2), k=-1)
-        weights = np.vstack((weights, np.zeros(n_class -1)))
-        weights[-1, -1] = 1
+        loss_fd = np.vstack((loss_fd, np.zeros(n_class -1)))
+        loss_fd[-1, -1] = 1
+    else:
+        raise NotImplementedError
 
     x0 = np.zeros(n_features + n_class - 1)
     x0[X.shape[1]:] = np.arange(n_class - 1)
-    if bounds == True:
-        bounds = [(None, None)] * (n_features + 1) + [(0, None)] * (n_class - 2)
-    else:
-        bounds = None
     options = {'maxiter' : maxiter}
-    sol = optimize.minimize(obj_margin, x0, jac=grad_margin,
-        args=(X, y, alpha, n_class, weights), method='L-BFGS-B', bounds=bounds,
+    sol = optimize.minimize(obj_margin, x0, #jac=grad_margin,
+        args=(X, y, alpha, n_class, loss_fd), 
         options=options)
     if not sol.success:
         print(sol.message)
@@ -203,12 +201,12 @@ class OrdinalLogistic(base.BaseEstimator):
 
     def fit(self, X, y):
         self.n_class = np.unique(y).size
-        self.w_, self.theta_ = threshold_fit(X, y, self.alpha, self.n_class,
+        self.coef_, self.theta_ = threshold_fit(X, y, self.alpha, self.n_class,
             mode=self.mode, verbose=self.verbose)
         return self
 
     def predict(self, X):
-        return threshold_predict(X, self.w_, self.theta_)
+        return threshold_predict(X, self.coef_, self.theta_)
 
     def score(self, X, y):
         pred = self.predict(X)
