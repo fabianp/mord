@@ -44,7 +44,7 @@ def obj_margin(x0, X, y, alpha, n_class, weights):
 
     Xw = X.dot(w)
     Alpha = theta[:, None] - Xw  # (n_class - 1, n_samples)
-    S = np.sign(y - np.arange(n_class - 1)[:, None] - 0.5)
+    S = np.sign(np.arange(n_class - 1)[:, None] - y + 0.5)
 
     obj = np.sum(loss_fd.T * log_loss(S * Alpha)) + \
            alpha * 0.5 * (linalg.norm(w) ** 2)
@@ -150,7 +150,7 @@ def threshold_predict(X, w, theta):
     pred = []
     n_samples = X.shape[0]
     Xw = X.dot(w)
-    tmp = theta[:, None] - Xw
+    tmp = Xw - theta[:, None]
     pred = np.sum(tmp >= 0, axis=0).astype(np.int)
     return pred
 
