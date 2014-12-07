@@ -40,17 +40,16 @@ def obj_margin(x0, X, y, alpha, n_class, weights):
     w = x0[:X.shape[1]]
     c = x0[X.shape[1]:]
     theta = np.cumsum(c)
-    #theta = np.sort(theta)
     loss_fd = weights[y]
 
     Xw = X.dot(w)
-    Alpha = theta[:, None] - Xw # (n_class - 1, n_samples)
-    S = np.sign(np.arange(n_class - 1)[:, None] - y + 0.5)
+    Alpha = theta[:, None] - Xw  # (n_class - 1, n_samples)
+    S = np.sign(y - np.arange(n_class - 1)[:, None] - 0.5)
 
     obj = np.sum(loss_fd.T * log_loss(S * Alpha)) + \
            alpha * 0.5 * (linalg.norm(w) ** 2)
-    #print obj
     return obj
+
 
 def grad_margin(x0, X, y, alpha, n_class, weights):
     """
@@ -134,7 +133,7 @@ def threshold_fit(X, y, alpha, n_class, mode='AE', verbose=False,
     x0[X.shape[1]:] = np.arange(n_class - 1)
     options = {'maxiter' : maxiter}
     sol = optimize.minimize(obj_margin, x0, #jac=grad_margin,
-        args=(X, y, alpha, n_class, loss_fd), 
+        args=(X, y, alpha, n_class, loss_fd),
         options=options)
     if not sol.success:
         print(sol.message)
@@ -145,14 +144,14 @@ def threshold_fit(X, y, alpha, n_class, mode='AE', verbose=False,
 
 def threshold_predict(X, w, theta):
     """
-    Class numbers are between 0 and k-1
+    Class numbers are assumed to be between 0 and k-1
     """
     idx = np.concatenate((np.argsort(theta), [theta.size]))
     pred = []
     n_samples = X.shape[0]
     Xw = X.dot(w)
     tmp = theta[:, None] - Xw
-    pred = np.sum(tmp <= 0, axis=0).astype(np.int)
+    pred = np.sum(tmp >= 0, axis=0).astype(np.int)
     return pred
 
 
@@ -272,40 +271,19 @@ if __name__ == '__main__':
     np.random.seed(0)
     from sklearn import datasets, metrics, svm, cross_validation
     n_class = 3
-    n_samples = 20
+    n_samples = 200
     n_dim = 10
 
     X, y = datasets.make_regression(n_samples=n_samples, n_features=n_dim,
-        n_informative=n_dim // 10)
+        n_informative=n_dim // 10, noise=20.)
 
     bins = stats.mstats.mquantiles(y, np.linspace(0, 1, n_class + 1))
     y = np.digitize(y, bins[:-1])
     y -= np.min(y)
 
-    #X, y = datasets.make_classification(n_samples=n_samples,
-        #n_informative=5, n_classes=n_class, n_features=20)
-
-    print X.shape
-    print y
-    print
-
-    #w, theta = threshold_fit(X, y, 0., n_class, mode='AE')
-    #pred = threshold_predict(X, w, theta)
-    #print metrics.mean_absolute_error(pred, y)
-    #print metrics.zero_one_loss(pred, y, normalize=True)
-    #print
-
     cv = cross_validation.KFold(y.size)
-    for train, test in cv:
-        test = train
-        w, theta = threshold_fit(X[train], y[train], 0., n_class, mode='AE',
-                                 bounds=False)
-        pred = threshold_predict(X[test], w, theta)
-        print metrics.mean_absolute_error(pred, y[test])
 
-        W = multiclass_fit(X[train], y[train], 0., n_class)
-        pred = multiclass_predict(X[test], W)
-        print pred, y[test]
-        print metrics.mean_absolute_error(pred, y[test])
-        break
+    for clf in [OrdinalLogistic(), RidgeOR(), LAD()]:
+        print np.mean(cross_validation.cross_val_score(clf, X, y, cv=cv))
+
 
