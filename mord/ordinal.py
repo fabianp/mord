@@ -59,7 +59,6 @@ def grad_margin(x0, X, y, alpha, n_class, weights):
     w = x0[:X.shape[1]]
     c = x0[X.shape[1]:]
     theta = np.cumsum(c)
-    #theta = np.sort(theta)
     loss_fd = weights[y]
 
     Xw = X.dot(w)
@@ -70,9 +69,9 @@ def grad_margin(x0, X, y, alpha, n_class, weights):
 
     Sigma = S * loss_fd.T * sigmoid(-S * Alpha)
 
-    grad_w = X.T.dot(Sigma.sum(0)) / float(X.shape[0]) + alpha * 2 * w
+    grad_w = X.T.dot(Sigma.sum(0)) + alpha * w
 
-    grad_theta = - Sigma.sum(1) / float(X.shape[0])
+    grad_theta = -Sigma.sum(1)
 
     tmp = np.concatenate(([0], grad_theta))
     grad_c = np.sum(grad_theta) - np.cumsum(tmp[:-1])
@@ -103,7 +102,7 @@ def obj_multiclass(x0, X, y, alpha, n_class):
 
 
 def threshold_fit(X, y, alpha, n_class, mode='AE', verbose=False,
-                  maxiter=1000, bounds=False):
+                  maxiter=10000, bounds=False):
     """
     Solve the general threshold-based ordinal regression model
     using the logistic loss as surrogate of the 0-1 loss
@@ -132,7 +131,7 @@ def threshold_fit(X, y, alpha, n_class, mode='AE', verbose=False,
     x0 = np.zeros(n_features + n_class - 1)
     x0[X.shape[1]:] = np.arange(n_class - 1)
     options = {'maxiter' : maxiter}
-    sol = optimize.minimize(obj_margin, x0, #jac=grad_margin,
+    sol = optimize.minimize(obj_margin, x0, jac=grad_margin,
         args=(X, y, alpha, n_class, loss_fd),
         options=options)
     if not sol.success:
@@ -200,8 +199,8 @@ class OrdinalLogistic(base.BaseEstimator):
 
     def fit(self, X, y):
         self.n_class = np.unique(y).size
-        self.coef_, self.theta_ = threshold_fit(X, y, self.alpha, self.n_class,
-            mode=self.mode, verbose=self.verbose)
+        self.coef_, self.theta_ = threshold_fit(X, y, self.alpha, 
+            self.n_class, mode=self.mode, verbose=self.verbose)
         return self
 
     def predict(self, X):
@@ -238,7 +237,8 @@ class RidgeOR(linear_model.Ridge):
 
     def score(self, X, y):
         pred = self.predict(X)
-        return - metrics.mean_squared_error(pred, y)
+        return - metrics.mean_absolute_error(pred, y)
+        #return - metrics.mean_squared_error(pred, y)
 
 
 if hasattr(svm, 'LinearSVR'):
@@ -265,14 +265,13 @@ if hasattr(svm, 'LinearSVR'):
 
 
 
-
 if __name__ == '__main__':
 
     np.random.seed(0)
     from sklearn import datasets, metrics, svm, cross_validation
-    n_class = 3
+    n_class = 20
     n_samples = 200
-    n_dim = 10
+    n_dim = 100
 
     X, y = datasets.make_regression(n_samples=n_samples, n_features=n_dim,
         n_informative=n_dim // 10, noise=20.)
@@ -280,6 +279,11 @@ if __name__ == '__main__':
     bins = stats.mstats.mquantiles(y, np.linspace(0, 1, n_class + 1))
     y = np.digitize(y, bins[:-1])
     y -= np.min(y)
+    
+    # test that the gradient is correct
+    x0 = np.random.randn(X.shape[1] + n_class - 1)
+    print optimize.check_grad(obj_margin, grad_margin, x0, X, y, 1., n_class,
+                        np.ones((n_class, n_class - 1)))
 
     cv = cross_validation.KFold(y.size)
 
