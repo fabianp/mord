@@ -216,7 +216,7 @@ class OrdinalLogistic(base.BaseEstimator):
             raise NotImplementedError
 
 
-class RidgeOR(linear_model.Ridge):
+class OrdinalRidge(linear_model.Ridge):
     """
     Overwrite Ridge from scikit-learn to use
     the (minus) absolute error as score function.
@@ -287,7 +287,7 @@ if __name__ == '__main__':
 
     cv = cross_validation.KFold(y.size)
 
-    for clf in [OrdinalLogistic(), RidgeOR(), LAD()]:
+    for clf in [OrdinalLogistic(), OrdinalRidge(), LAD()]:
         print np.mean(cross_validation.cross_val_score(clf, X, y, cv=cv))
 
 
