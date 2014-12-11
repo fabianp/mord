@@ -198,6 +198,9 @@ class OrdinalLogistic(base.BaseEstimator):
         self.maxiter = maxiter
 
     def fit(self, X, y):
+        _y = np.array(y).astype(np.int)
+        if np.abs(y - y).sum() > 0.1:
+            raise ValueError('y must only contain integer values')
         self.n_class = np.unique(y).size
         self.coef_, self.theta_ = threshold_fit(X, y, self.alpha, 
             self.n_class, mode=self.mode, verbose=self.verbose)
@@ -269,7 +272,7 @@ if __name__ == '__main__':
 
     np.random.seed(0)
     from sklearn import datasets, metrics, svm, cross_validation
-    n_class = 20
+    n_class = 3
     n_samples = 200
     n_dim = 100
 
@@ -282,12 +285,20 @@ if __name__ == '__main__':
     
     # test that the gradient is correct
     x0 = np.random.randn(X.shape[1] + n_class - 1)
+
+    loss_fd = np.diag(np.ones(n_class - 1)) + \
+        np.diag(np.ones(n_class - 2), k=-1)
+    loss_fd = np.vstack((loss_fd, np.zeros(n_class -1)))
+    loss_fd[-1, -1] = 1
     print optimize.check_grad(obj_margin, grad_margin, x0, X, y, 1., n_class,
-                        np.ones((n_class, n_class - 1)))
+                        loss_fd)
 
     cv = cross_validation.KFold(y.size)
 
     for clf in [OrdinalLogistic(), OrdinalRidge(), LAD()]:
         print np.mean(cross_validation.cross_val_score(clf, X, y, cv=cv))
 
+    print
+    for clf in [OrdinalLogistic(mode='0-1'), svm.SVC()]:
+        print np.mean(cross_validation.cross_val_score(clf, X, y, cv=cv))
 
