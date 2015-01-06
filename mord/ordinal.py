@@ -189,19 +189,34 @@ def multiclass_predict(X, W):
 
 class OrdinalLogistic(base.BaseEstimator):
     """
-    Classifier that implements the ordinal logistic model
+    Classifier that implements the ordinal logistic model.
+
+    Parameters
+    ----------
+    alpha: float
+        Regularization parameter. Zero is no regularization, higher values
+        increate the squared l2 regularization.
+
+    mode: string
+        mode='AE' is equivalent to the 'All threshold' formulation
+        in the reference while mode='0-1' is equivalent to the 'Immediate
+        threshold' formulation in the reference.
+
+    References
+    ----------
+    J. D. M. Rennie and N. Srebro, "Loss Functions for Preference Levels :
+    Regression with Discrete Ordered Labels," in Proceedings of the IJCAI
+    Multidisciplinary Workshop on Advances in Preference Handling, 2005.
     """
-    def __init__(self, alpha=1., mode='AE',
-        verbose=0, maxiter=10000):
+    def __init__(self, alpha=1., verbose=0, maxiter=10000):
         self.alpha = alpha
-        self.mode = mode
         self.verbose = verbose
         self.maxiter = maxiter
 
     def fit(self, X, y):
         self.n_class = np.unique(y).size
         self.coef_, self.theta_ = threshold_fit(X, y, self.alpha, self.n_class,
-            mode=self.mode, verbose=self.verbose)
+            mode='AE', verbose=self.verbose)
         return self
 
     def predict(self, X):
@@ -209,12 +224,27 @@ class OrdinalLogistic(base.BaseEstimator):
 
     def score(self, X, y):
         pred = self.predict(X)
-        if self.mode == 'AE':
-            return - metrics.mean_absolute_error(pred, y)
-        elif self.mode == '0-1':
-            return metrics.accuracy_score(pred, y)
-        else:
-            raise NotImplementedError
+        return - metrics.mean_absolute_error(pred, y)
+
+
+class MulticlassLogistic(base.BaseEstimator):
+    def __init__(self, alpha=1., verbose=0, maxiter=10000):
+        self.alpha = alpha
+        self.verbose = verbose
+        self.maxiter = maxiter
+
+    def fit(self, X, y):
+        self.n_class = np.unique(y).size
+        self.coef_, self.theta_ = threshold_fit(X, y, self.alpha, self.n_class,
+            mode='0-1', verbose=self.verbose)
+        return self
+
+    def predict(self, X):
+        return threshold_predict(X, self.coef_, self.theta_)
+
+    def score(self, X, y):
+        pred = self.predict(X)
+        return metrics.accuracy_score(pred, y)
 
 
 class RidgeOR(linear_model.Ridge):
