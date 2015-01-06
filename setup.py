@@ -1,13 +1,13 @@
-from distutils.core import setup
-import numpy as np
-import setuptools
+from setuptools import setup, find_packages
+import mord
 
 setup(name='mord',
-    version='0.1',
-    description='Ordinal Regression algorithms',
+    version=mord.__version__,
+    description='Ordinal regression models',
+    long_description=open('README.rst').read(),
     author='Fabian Pedregosa',
     author_email='f@bianp.net',
-    url='',
+    url='https://pypi.python.org/pypi/mord',
     packages=['mord'],
     requires = ['numpy', 'scipy'],
 )
