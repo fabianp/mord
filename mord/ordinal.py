@@ -217,13 +217,8 @@ class OrdinalLogistic(base.BaseEstimator):
         if np.abs(y - y).sum() > 0.1:
             raise ValueError('y must only contain integer values')
         self.n_class = np.unique(y).size
-<<<<<<< HEAD
         self.coef_, self.theta_ = threshold_fit(X, y, self.alpha, self.n_class,
             mode='AE', verbose=self.verbose)
-=======
-        self.coef_, self.theta_ = threshold_fit(X, y, self.alpha, 
-            self.n_class, mode=self.mode, verbose=self.verbose)
->>>>>>> adea28cb950a7326e8ed9d4c427d54db8c986b61
         return self
 
     def predict(self, X):
@@ -317,7 +312,7 @@ if __name__ == '__main__':
     bins = stats.mstats.mquantiles(y, np.linspace(0, 1, n_class + 1))
     y = np.digitize(y, bins[:-1])
     y -= np.min(y)
-    
+
     # test that the gradient is correct
     x0 = np.random.randn(X.shape[1] + n_class - 1)
 
