@@ -3,10 +3,20 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to mord's documentation!
-================================
+mord: Ordinal Regression in Python
+===================================
 
-mord is a Python package that implements some statistical learning methods known as ordinal regression.
+mord is a Python package that implements some ordinal regression methods.
+
+.. image:: ordinal_1.png
+   :align: center
+
+
+What is ordinal regression ?
+-----------------------------
+
+Ordinal Regression englobes a family of statistical learning methods in which the goal is to predict a variable which is discrete and ordered. For example, predicting the movie rating on a scale of 1 to 5 starts can be considered an ordinal regression task.
+
 
 Contents:
 
