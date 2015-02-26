@@ -47,7 +47,7 @@ def obj_margin(x0, X, y, alpha, n_class, weights):
     S = np.sign(np.arange(n_class - 1)[:, None] - y + 0.5)
 
     obj = np.sum(loss_fd.T * log_loss(S * Alpha)) + \
-           alpha * 0.5 * (linalg.norm(w) ** 2)
+        alpha * 0.5 * (linalg.norm(w) ** 2)
     return obj
 
 
@@ -132,8 +132,8 @@ def threshold_fit(X, y, alpha, n_class, mode='AE', verbose=False,
     x0[X.shape[1]:] = np.arange(n_class - 1)
     options = {'maxiter' : maxiter}
     sol = optimize.minimize(obj_margin, x0, jac=grad_margin,
-        args=(X, y, alpha, n_class, loss_fd),
-        options=options)
+                            args=(X, y, alpha, n_class, loss_fd),
+                            options=options)
     if not sol.success:
         print(sol.message)
     w, c = sol.x[:X.shape[1]], sol.x[X.shape[1]:]
@@ -170,8 +170,8 @@ def multiclass_fit(X, y, alpha, n_class, maxiter=100000):
     x0 = np.random.randn((n_features + 1) * (n_class - 1))
     options = {'maxiter' : maxiter}
     sol = optimize.minimize(obj_multiclass, x0, jac=False,
-        args=(X, y, alpha, n_class), method='L-BFGS-B',
-        options=options)
+                            args=(X, y, alpha, n_class), method='L-BFGS-B',
+                            options=options)
     if not sol.success:
         print(sol.message)
     W = sol.x.reshape((n_features + 1, n_class-1))
@@ -220,8 +220,9 @@ class OrdinalLogistic(base.BaseEstimator):
         if np.abs(y - y).sum() > 0.1:
             raise ValueError('y must only contain integer values')
         self.n_class = np.unique(y).size
+        self.classes_ = np.unique(y)
         self.coef_, self.theta_ = threshold_fit(X, y, self.alpha, self.n_class,
-            mode='AE', verbose=self.verbose)
+                                                mode='AE', verbose=self.verbose)
         return self
 
     def predict(self, X):
@@ -257,13 +258,15 @@ class LogisticAT(base.BaseEstimator):
         _y = np.array(y).astype(np.int)
         if np.abs(y - y).sum() > 0.1:
             raise ValueError('y must only contain integer values')
-        self.n_class = np.unique(y).size
-        self.coef_, self.theta_ = threshold_fit(X, y, self.alpha, self.n_class,
-            mode='AE', verbose=self.verbose)
+        self.classes_ = np.unique(y)
+        self.n_class_ = self.classes_.max() - self.classes_.min()
+        y_tmp = y - y.min() # we need classes that start at zero
+        self.coef_, self.theta_ = threshold_fit(X, y_tmp, self.alpha, self.n_class_,
+                                                mode='AE', verbose=self.verbose)
         return self
 
     def predict(self, X):
-        return threshold_predict(X, self.coef_, self.theta_)
+        return threshold_predict(X, self.coef_, self.theta_) + self.classes_.min()
 
     def score(self, X, y):
         pred = self.predict(X)
@@ -298,13 +301,15 @@ class LogisticIT(base.BaseEstimator):
         _y = np.array(y).astype(np.int)
         if np.abs(y - y).sum() > 0.1:
             raise ValueError('y must only contain integer values')
-        self.n_class = np.unique(y).size
-        self.coef_, self.theta_ = threshold_fit(X, y, self.alpha, self.n_class,
-            mode='0-1', verbose=self.verbose)
+        self.classes_ = np.unique(y)
+        self.n_class_ = self.classes_.max() - self.classes_.min()
+        y_tmp = y - y.min() # we need classes that start at zero
+        self.coef_, self.theta_ = threshold_fit(X, y_tmp, self.alpha, self.n_class,
+                                                mode='0-1', verbose=self.verbose)
         return self
 
     def predict(self, X):
-        return threshold_predict(X, self.coef_, self.theta_)
+        return threshold_predict(X, self.coef_, self.theta_) + self.classes_.min()
 
     def score(self, X, y):
         pred = self.predict(X)
@@ -320,7 +325,7 @@ class MulticlassLogistic(base.BaseEstimator):
     def fit(self, X, y):
         self.n_class = np.unique(y).size
         self.coef_, self.theta_ = threshold_fit(X, y, self.alpha, self.n_class,
-            mode='0-1', verbose=self.verbose)
+                                                mode='0-1', verbose=self.verbose)
         return self
 
     def predict(self, X):
@@ -389,7 +394,7 @@ if __name__ == '__main__':
     n_dim = 100
 
     X, y = datasets.make_regression(n_samples=n_samples, n_features=n_dim,
-        n_informative=n_dim // 10, noise=20.)
+                                    n_informative=n_dim // 10, noise=20.)
 
     bins = stats.mstats.mquantiles(y, np.linspace(0, 1, n_class + 1))
     y = np.digitize(y, bins[:-1])
@@ -403,7 +408,7 @@ if __name__ == '__main__':
     loss_fd = np.vstack((loss_fd, np.zeros(n_class -1)))
     loss_fd[-1, -1] = 1
     print optimize.check_grad(obj_margin, grad_margin, x0, X, y, 1., n_class,
-                        loss_fd)
+                              loss_fd)
 
     cv = cross_validation.KFold(y.size)
 
@@ -413,4 +418,3 @@ if __name__ == '__main__':
     print
     for clf in [OrdinalLogistic(mode='0-1'), svm.SVC()]:
         print np.mean(cross_validation.cross_val_score(clf, X, y, cv=cv))
-

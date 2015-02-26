@@ -20,17 +20,17 @@ Ordinal Regression englobes a family of statistical learning methods in which th
 In this package we provide different models for the ordinal regression task. We categorize them between threshold-based, regression-based and classification-based.
 
 
-Threshold-based:
+**Threshold-based**:
 
   * :class:`mord.LogisticIT`
   * :class:`mord.LogisticAT`
 
-Regression-based:
+**Regression-based**:
 
   * :class:`mord.OrdinalRidge`
   * :class:`mord.LAD`
 
-Classification-based:
+**Classification-based**:
 
   * :class:`mord.MulticlassLogistic`
 
