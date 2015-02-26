@@ -15,7 +15,7 @@ mord is a Python package that implements some ordinal regression methods followi
 What is ordinal regression ?
 -----------------------------
 
-Ordinal Regression denotes a family of statistical learning methods in which the goal is to predict a variable which is discrete and ordered. For example, predicting the movie rating on a scale of 1 to 5 starts can be considered an ordinal regression task.
+Ordinal Regression denotes a family of statistical learning methods in which the goal is to predict a variable that is discrete and ordered. For example, predicting the movie rating on a scale of 1 to 5 starts can be considered an ordinal regression task.
 
 In this package we provide different models for the ordinal regression task. We categorize them between :ref:`threshold-based`, :ref:`regression-based` and :ref:`classification-based`.
 
