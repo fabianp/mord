@@ -22,7 +22,8 @@ In this package we provide different models for the ordinal regression task. We 
 
 Threshold-based:
 
-  * :class:`mord.OrdinalLogistic`
+  * :class:`mord.LogisticIT`
+  * :class:`mord.LogisticAT`
 
 Regression-based:
 
