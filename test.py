@@ -14,6 +14,11 @@ bins = stats.mstats.mquantiles(y, np.linspace(0, 1, n_class + 1))
 y = np.digitize(y, bins[:-1])
 
 def test_1():
+    # overfit mode
     clf = mord.LogisticAT()
     clf.fit(X, y)
-    assert clf.score(X, y) > -.1
+    assert clf.score(X, y) == 0.
+
+    clf = mord.LogisticIT()
+    clf.fit(X, y)
+    assert clf.score(X, y) == 1.

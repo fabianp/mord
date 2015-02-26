@@ -259,7 +259,7 @@ class LogisticAT(base.BaseEstimator):
         if np.abs(y - y).sum() > 0.1:
             raise ValueError('y must only contain integer values')
         self.classes_ = np.unique(y)
-        self.n_class_ = self.classes_.max() - self.classes_.min()
+        self.n_class_ = self.classes_.max() - self.classes_.min() + 1
         y_tmp = y - y.min() # we need classes that start at zero
         self.coef_, self.theta_ = threshold_fit(X, y_tmp, self.alpha, self.n_class_,
                                                 mode='AE', verbose=self.verbose)
@@ -302,9 +302,9 @@ class LogisticIT(base.BaseEstimator):
         if np.abs(y - y).sum() > 0.1:
             raise ValueError('y must only contain integer values')
         self.classes_ = np.unique(y)
-        self.n_class_ = self.classes_.max() - self.classes_.min()
+        self.n_class_ = self.classes_.max() - self.classes_.min() + 1
         y_tmp = y - y.min() # we need classes that start at zero
-        self.coef_, self.theta_ = threshold_fit(X, y_tmp, self.alpha, self.n_class,
+        self.coef_, self.theta_ = threshold_fit(X, y_tmp, self.alpha, self.n_class_,
                                                 mode='0-1', verbose=self.verbose)
         return self
 
