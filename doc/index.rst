@@ -17,20 +17,30 @@ What is ordinal regression ?
 
 Ordinal Regression denotes a family of statistical learning methods in which the goal is to predict a variable which is discrete and ordered. For example, predicting the movie rating on a scale of 1 to 5 starts can be considered an ordinal regression task.
 
-In this package we provide different models for the ordinal regression task. We categorize them between threshold-based, regression-based and classification-based.
+In this package we provide different models for the ordinal regression task. We categorize them between :ref:`threshold-based`, :ref:`regression-based` and :ref:`classification-based`.
 
 
-**Threshold-based**:
+.. _threshold-based:
+
+Threshold-based models
+----------------------
 
   * :class:`mord.LogisticIT`
   * :class:`mord.LogisticAT`
 
-**Regression-based**:
+
+.. _regression-based:
+
+Regression-based models
+-----------------------
 
   * :class:`mord.OrdinalRidge`
   * :class:`mord.LAD`
 
-**Classification-based**:
+.. _classification-based:
+
+Classification-based models
+---------------------------
 
   * :class:`mord.MulticlassLogistic`
 
