@@ -144,7 +144,7 @@ class LogisticAT(base.BaseEstimator):
     Regression with Discrete Ordered Labels," in Proceedings of the IJCAI
     Multidisciplinary Workshop on Advances in Preference Handling, 2005.
     """
-    def __init__(self, alpha=1., verbose=0, maxiter=10000):
+    def __init__(self, alpha=1., verbose=0, maxiter=1000):
         self.alpha = alpha
         self.verbose = verbose
         self.maxiter = maxiter
@@ -204,8 +204,9 @@ class LogisticIT(base.BaseEstimator):
         self.classes_ = np.unique(y)
         self.n_class_ = self.classes_.max() - self.classes_.min() + 1
         y_tmp = y - y.min() # we need classes that start at zero
-        self.coef_, self.theta_ = threshold_fit(X, y_tmp, self.alpha, self.n_class_,
-                                                mode='0-1', verbose=self.verbose)
+        self.coef_, self.theta_ = threshold_fit(
+            X, y_tmp, self.alpha, self.n_class_,
+            mode='0-1', verbose=self.verbose, maxiter=self.maxiter)
         return self
 
     def predict(self, X):
