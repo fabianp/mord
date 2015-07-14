@@ -1,5 +1,3 @@
-import numpy as np
-
 """
 some ordinal regression algorithms
 
@@ -9,10 +7,7 @@ in http://arxiv.org/abs/1408.2327
 import numpy as np
 from scipy import optimize, linalg, stats
 
-from sklearn import base, metrics, svm, linear_model
-
-from joblib import Memory
-
+from sklearn import base, metrics
 
 def sigmoid(t):
     # sigmoid function, 1 / (1 + exp(-t))
@@ -34,14 +29,14 @@ def log_loss(Z):
     return out
 
 
-def obj_margin(x0, X, y, alpha, n_class, weights):
+def obj_margin(x0, X, y, alpha, n_class, weights, L):
     """
     Objective function for the general margin-based formulation
     """
 
     w = x0[:X.shape[1]]
     c = x0[X.shape[1]:]
-    theta = np.cumsum(c)
+    theta = L.dot(c)
     loss_fd = weights[y]
 
     Xw = X.dot(w)
@@ -53,18 +48,18 @@ def obj_margin(x0, X, y, alpha, n_class, weights):
     return obj
 
 
-def grad_margin(x0, X, y, alpha, n_class, weights):
+def grad_margin(x0, X, y, alpha, n_class, weights, L):
     """
     Gradient for the general margin-based formulation
     """
 
     w = x0[:X.shape[1]]
     c = x0[X.shape[1]:]
-    theta = np.cumsum(c)
+    theta = L.dot(c)
     loss_fd = weights[y]
 
     Xw = X.dot(w)
-    Alpha = theta[:, None] - Xw # (n_class - 1, n_samples)
+    Alpha = theta[:, None] - Xw  # (n_class - 1, n_samples)
     S = np.sign(np.arange(n_class - 1)[:, None] - y + 0.5)
     # Alpha[idx] *= -1
     # W[idx.T] *= -1
@@ -74,15 +69,12 @@ def grad_margin(x0, X, y, alpha, n_class, weights):
     grad_w = X.T.dot(Sigma.sum(0)) + alpha * w
 
     grad_theta = -Sigma.sum(1)
-
-    tmp = np.concatenate(([0], grad_theta))
-    grad_c = np.sum(grad_theta) - np.cumsum(tmp[:-1])
-
+    grad_c = L.T.dot(grad_theta)
     return np.concatenate((grad_w, grad_c), axis=0)
 
 
-def threshold_fit(X, y, alpha, n_class, mode='AE', verbose=False,
-                  maxiter=10000, bounds=False):
+def threshold_fit(X, y, alpha, n_class, mode='AE',
+                  maxiter=1000, verbose=False):
     """
     Solve the general threshold-based ordinal regression model
     using the logistic loss as surrogate of the 0-1 loss
@@ -94,8 +86,11 @@ def threshold_fit(X, y, alpha, n_class, mode='AE', verbose=False,
     """
 
     X = np.asarray(X)
-    y = np.asarray(y) # XXX check its made of integers
+    y = np.asarray(y)  # XXX check its made of integers
     n_samples, n_features = X.shape
+
+    # convert from c to theta
+    L = np.eye(n_class - 1) - np.diag(np.ones(n_class - 2), k=-1)
 
     if mode == 'AE':
         # loss forward difference
@@ -104,30 +99,28 @@ def threshold_fit(X, y, alpha, n_class, mode='AE', verbose=False,
         loss_fd = np.diag(np.ones(n_class - 1)) + \
             np.diag(np.ones(n_class - 2), k=-1)
         loss_fd = np.vstack((loss_fd, np.zeros(n_class -1)))
-        loss_fd[-1, -1] = 1
+        loss_fd[-1, -1] = 1  # border case
     else:
         raise NotImplementedError
 
     x0 = np.zeros(n_features + n_class - 1)
     x0[X.shape[1]:] = np.arange(n_class - 1)
-    options = {'maxiter' : maxiter}
-    sol = optimize.minimize(obj_margin, x0, jac=grad_margin,
-                            args=(X, y, alpha, n_class, loss_fd),
-                            options=options)
+    options = {'maxiter' : maxiter, 'disp': verbose}
+    bounds = [(None, None)] * (n_features + 1) + [(0, None)] * (n_class - 2)
+    sol = optimize.minimize(obj_margin, x0, method='L-BFGS-B',
+        jac=grad_margin, args=(X, y, alpha, n_class, loss_fd, L),
+        bounds=bounds, options=options)
     if not sol.success:
         print(sol.message)
     w, c = sol.x[:X.shape[1]], sol.x[X.shape[1]:]
-    theta = np.cumsum(c)
-    return w, np.sort(theta)
+    theta = L.dot(c)
+    return w, theta
 
 
 def threshold_predict(X, w, theta):
     """
     Class numbers are assumed to be between 0 and k-1
     """
-    idx = np.concatenate((np.argsort(theta), [theta.size]))
-    pred = []
-    n_samples = X.shape[0]
     Xw = X.dot(w)
     tmp = Xw - theta[:, None]
     pred = np.sum(tmp >= 0, axis=0).astype(np.int)
@@ -158,7 +151,7 @@ class LogisticAT(base.BaseEstimator):
 
     def fit(self, X, y):
         _y = np.array(y).astype(np.int)
-        if np.abs(y - y).sum() > 0.1:
+        if np.abs(_y - y).sum() > 0.1:
             raise ValueError('y must only contain integer values')
         self.classes_ = np.unique(y)
         self.n_class_ = self.classes_.max() - self.classes_.min() + 1
@@ -199,7 +192,7 @@ class LogisticIT(base.BaseEstimator):
     Regression with Discrete Ordered Labels," in Proceedings of the IJCAI
     Multidisciplinary Workshop on Advances in Preference Handling, 2005.
     """
-    def __init__(self, alpha=1., verbose=0, maxiter=10000):
+    def __init__(self, alpha=1., verbose=0, maxiter=1000):
         self.alpha = alpha
         self.verbose = verbose
         self.maxiter = maxiter
