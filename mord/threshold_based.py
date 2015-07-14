@@ -1,3 +1,5 @@
+import numpy as np
+
 """
 some ordinal regression algorithms
 
@@ -79,28 +81,6 @@ def grad_margin(x0, X, y, alpha, n_class, weights):
     return np.concatenate((grad_w, grad_c), axis=0)
 
 
-
-def obj_multiclass(x0, X, y, alpha, n_class):
-    n_samples, n_features = X.shape
-    W = x0.reshape((n_features + 1, n_class-1))
-    Wk = - W.sum(1)[:, None]
-    W = np.concatenate((W, Wk), axis=1)
-    X = np.concatenate((X, np.ones((n_samples, 1))), axis=1)
-    Y = np.zeros((n_samples, n_class))
-    Y[:] = - 1./(n_class - 1)
-    for i in range(n_samples):
-        Y[i, y[i]] = 1.
-
-    L = np.abs(np.arange(n_class)[:, None] - np.arange(n_class))
-    obj = (L[y] * np.fmax(X.dot(W) - Y, 0)).sum() / float(n_samples)
-
-    Wt = W[:n_features]
-    penalty = alpha * np.trace(Wt.T.dot(Wt))
-    return obj + penalty
-
-
-
-
 def threshold_fit(X, y, alpha, n_class, mode='AE', verbose=False,
                   maxiter=10000, bounds=False):
     """
@@ -154,84 +134,6 @@ def threshold_predict(X, w, theta):
     return pred
 
 
-def multiclass_fit(X, y, alpha, n_class, maxiter=100000):
-    """
-    Multiclass classification with absolute error cost
-
-    Lee, Yoonkyung, Yi Lin, and Grace Wahba. "Multicategory support
-    vector machines: Theory and application to the classification of
-    microarray data and satellite radiance data." Journal of the
-    American Statistical Association 99.465 (2004): 67-81.
-    """
-    X = np.asarray(X)
-    y = np.asarray(y) # XXX check its made of integers
-    n_samples, n_features = X.shape
-
-    x0 = np.random.randn((n_features + 1) * (n_class - 1))
-    options = {'maxiter' : maxiter}
-    sol = optimize.minimize(obj_multiclass, x0, jac=False,
-                            args=(X, y, alpha, n_class), method='L-BFGS-B',
-                            options=options)
-    if not sol.success:
-        print(sol.message)
-    W = sol.x.reshape((n_features + 1, n_class-1))
-    Wk = - W.sum(1)[:, None]
-    W = np.concatenate((W, Wk), axis=1)
-    return W
-
-def multiclass_predict(X, W):
-    n_samples, n_features = X.shape
-    X = np.concatenate((X, np.ones((n_samples, 1))), axis=1)
-    XW = X.dot(W)
-    return np.argmax(XW, axis=1)
-
-
-class OrdinalLogistic(base.BaseEstimator):
-    """
-    !!!!! DEPRECATED !!!!!!
-      Use LogisticAT and LogisticIT instead.
-
-    Classifier that implements the ordinal logistic model.
-
-    Parameters
-    ----------
-    alpha: float
-        Regularization parameter. Zero is no regularization, higher values
-        increate the squared l2 regularization.
-
-    mode: string
-        mode='AE' is equivalent to the 'All threshold' formulation
-        in the reference while mode='0-1' is equivalent to the 'Immediate
-        threshold' formulation in the reference.
-
-    References
-    ----------
-    J. D. M. Rennie and N. Srebro, "Loss Functions for Preference Levels :
-    Regression with Discrete Ordered Labels," in Proceedings of the IJCAI
-    Multidisciplinary Workshop on Advances in Preference Handling, 2005.
-    """
-    def __init__(self, alpha=1., verbose=0, maxiter=10000):
-        self.alpha = alpha
-        self.verbose = verbose
-        self.maxiter = maxiter
-
-    def fit(self, X, y):
-        _y = np.array(y).astype(np.int)
-        if np.abs(y - y).sum() > 0.1:
-            raise ValueError('y must only contain integer values')
-        self.n_class = np.unique(y).size
-        self.classes_ = np.unique(y)
-        self.coef_, self.theta_ = threshold_fit(X, y, self.alpha, self.n_class,
-                                                mode='AE', verbose=self.verbose)
-        return self
-
-    def predict(self, X):
-        return threshold_predict(X, self.coef_, self.theta_)
-
-    def score(self, X, y):
-        pred = self.predict(X)
-        return - metrics.mean_absolute_error(pred, y)
-
 
 class LogisticAT(base.BaseEstimator):
     """
@@ -276,9 +178,14 @@ class LogisticAT(base.BaseEstimator):
 
 class LogisticIT(base.BaseEstimator):
     """
-    Classifier that implements the ordinal logistic model (Immediate-Threshold variant)
+    Classifier that implements the ordinal logistic model
+    (Immediate-Threshold variant).
 
-    The score is the same as in multiclass classification methods (i.e. metrics.accuracy_score)
+    Contrary to the OrdinalLogistic model, this variant
+    minimizes a convex surrogate of the 0-1 loss, hence
+    the score associated with this object is the accuracy
+    score, i.e. the same score used in multiclass
+    classification methods (sklearn.metrics.accuracy_score).
 
     Parameters
     ----------
@@ -299,7 +206,7 @@ class LogisticIT(base.BaseEstimator):
 
     def fit(self, X, y):
         _y = np.array(y).astype(np.int)
-        if np.abs(y - y).sum() > 0.1:
+        if np.abs(_y - y).sum() > 0.1:
             raise ValueError('y must only contain integer values')
         self.classes_ = np.unique(y)
         self.n_class_ = self.classes_.max() - self.classes_.min() + 1
@@ -314,73 +221,6 @@ class LogisticIT(base.BaseEstimator):
     def score(self, X, y):
         pred = self.predict(X)
         return metrics.accuracy_score(pred, y)
-
-
-class MulticlassLogistic(base.BaseEstimator):
-    def __init__(self, alpha=1., verbose=0, maxiter=10000):
-        self.alpha = alpha
-        self.verbose = verbose
-        self.maxiter = maxiter
-
-    def fit(self, X, y):
-        self.n_class = np.unique(y).size
-        self.coef_, self.theta_ = threshold_fit(X, y, self.alpha, self.n_class,
-                                                mode='0-1', verbose=self.verbose)
-        return self
-
-    def predict(self, X):
-        return threshold_predict(X, self.coef_, self.theta_)
-
-    def score(self, X, y):
-        pred = self.predict(X)
-        return metrics.accuracy_score(pred, y)
-
-
-class OrdinalRidge(linear_model.Ridge):
-    """
-    Overwrite Ridge from scikit-learn to use
-    the (minus) absolute error as score function.
-
-    (see https://github.com/scikit-learn/scikit-learn/issues/3848
-    on why this cannot be accomplished using a GridSearchCV object)
-    """
-
-    def fit(self, X, y):
-        self.unique_y_ = np.unique(y)
-        super(linear_model.Ridge, self).fit(X, y)
-        return self
-
-    def predict(self, X):
-        pred =  np.round(super(linear_model.Ridge, self).predict(X))
-        pred = np.clip(pred, 0, self.unique_y_.max())
-        return pred
-
-    def score(self, X, y):
-        pred = self.predict(X)
-        return - metrics.mean_absolute_error(pred, y)
-        #return - metrics.mean_squared_error(pred, y)
-
-
-if hasattr(svm, 'LinearSVR'):
-    class LAD(svm.LinearSVR):
-        """
-        Least Absolute Deviation
-        """
-
-        def fit(self, X, y):
-            self.epsilon = 0.
-            self.unique_y_ = np.unique(y)
-            svm.LinearSVR.fit(self, X, y)
-            return self
-
-        def predict(self, X):
-            pred = np.round(super(svm.LinearSVR, self).predict(X))
-            pred = np.clip(pred, 0, self.unique_y_.max())
-            return pred
-
-        def score(self, X, y):
-            pred = self.predict(X)
-            return - metrics.mean_absolute_error(pred, y)
 
 
 
@@ -407,14 +247,14 @@ if __name__ == '__main__':
         np.diag(np.ones(n_class - 2), k=-1)
     loss_fd = np.vstack((loss_fd, np.zeros(n_class -1)))
     loss_fd[-1, -1] = 1
-    print optimize.check_grad(obj_margin, grad_margin, x0, X, y, 1., n_class,
-                              loss_fd)
+    print(optimize.check_grad(obj_margin, grad_margin, x0, X, y, 1., n_class,
+                              loss_fd))
 
     cv = cross_validation.KFold(y.size)
 
-    for clf in [OrdinalLogistic(), OrdinalRidge(), LAD()]:
-        print np.mean(cross_validation.cross_val_score(clf, X, y, cv=cv))
+    for clf in [LogisticAT(), OrdinalRidge(), LAD()]:
+        print(np.mean(cross_validation.cross_val_score(clf, X, y, cv=cv)))
 
-    print
-    for clf in [OrdinalLogistic(mode='0-1'), svm.SVC()]:
-        print np.mean(cross_validation.cross_val_score(clf, X, y, cv=cv))
+    print()
+    for clf in [LogisticAT(mode='0-1'), svm.SVC()]:
+        print(np.mean(cross_validation.cross_val_score(clf, X, y, cv=cv)))

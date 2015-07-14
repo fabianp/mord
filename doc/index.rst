@@ -24,6 +24,7 @@ In this package we provide different models for the ordinal regression task. We 
 
 Threshold-based models
 ----------------------
+Threshold-based loss functions partition the real like into `k` segments and then
 
   * :class:`mord.LogisticIT`
   * :class:`mord.LogisticAT`

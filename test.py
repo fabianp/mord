@@ -14,11 +14,18 @@ bins = stats.mstats.mquantiles(y, np.linspace(0, 1, n_class + 1))
 y = np.digitize(y, bins[:-1])
 
 def test_1():
-    # overfit mode
+    """
+    Test two model sin overfit mode
+    """
     clf = mord.LogisticAT()
     clf.fit(X, y)
+    # the score is - absolute error, 0 is perfect
     assert clf.score(X, y) == 0.
 
-    clf = mord.LogisticIT()
-    clf.fit(X, y)
-    assert clf.score(X, y) == 1.
+    #clf = mord.MulticlassLogistic()
+    #clf.fit(X, y)
+    ## the score is accuracy, 1 is perfect
+    #assert clf.score(X, y) == 1.
+
+
+test_1()
