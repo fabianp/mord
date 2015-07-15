@@ -74,7 +74,7 @@ def grad_margin(x0, X, y, alpha, n_class, weights, L):
 
 
 def threshold_fit(X, y, alpha, n_class, mode='AE',
-                  maxiter=1000, verbose=False):
+                  maxiter=1000, verbose=False, tol=1e-4):
     """
     Solve the general threshold-based ordinal regression model
     using the logistic loss as surrogate of the 0-1 loss
@@ -109,7 +109,7 @@ def threshold_fit(X, y, alpha, n_class, mode='AE',
     bounds = [(None, None)] * (n_features + 1) + [(0, None)] * (n_class - 2)
     sol = optimize.minimize(obj_margin, x0, method='L-BFGS-B',
         jac=grad_margin, args=(X, y, alpha, n_class, loss_fd, L),
-        bounds=bounds, options=options)
+        bounds=bounds, options=options, tol=tol)
     if not sol.success:
         print(sol.message)
     w, c = sol.x[:X.shape[1]], sol.x[X.shape[1]:]
