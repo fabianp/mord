@@ -110,7 +110,8 @@ def threshold_fit(X, y, alpha, n_class, mode='AE',
     x0 = np.zeros(n_features + n_class - 1)
     x0[X.shape[1]:] = np.arange(n_class - 1)
     options = {'maxiter' : maxiter, 'disp': verbose}
-    bounds = [(None, None)] * (n_features + 1) + [(0, None)] * (n_class - 2)
+    bounds = [(None, None)] * (n_features) + [(1, 1)] + \
+             [(0, None)] * (n_class - 2)
     sol = optimize.minimize(obj_margin, x0, method='L-BFGS-B',
         jac=grad_margin, args=(X, y, alpha, n_class, loss_fd, L),
         bounds=bounds, options=options, tol=tol)
