@@ -24,8 +24,7 @@ class OrdinalRidge(linear_model.Ridge):
 
     def score(self, X, y):
         pred = self.predict(X)
-        return - metrics.mean_absolute_error(pred, y)
-        #return - metrics.mean_squared_error(pred, y)
+        return - metrics.mean_squared_error(pred, y)
 
 
 if hasattr(svm, 'LinearSVR'):

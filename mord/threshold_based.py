@@ -90,7 +90,7 @@ def threshold_fit(X, y, alpha, n_class, mode='AE',
     n_samples, n_features = X.shape
 
     # convert from c to theta
-    L = np.eye(n_class - 1) - np.diag(np.ones(n_class - 2), k=-1)
+    L = np.eye(n_class - 1) + np.diag(np.ones(n_class - 2), k=-1)
 
     if mode == 'AE':
         # loss forward difference
@@ -100,6 +100,10 @@ def threshold_fit(X, y, alpha, n_class, mode='AE',
             np.diag(np.ones(n_class - 2), k=-1)
         loss_fd = np.vstack((loss_fd, np.zeros(n_class -1)))
         loss_fd[-1, -1] = 1  # border case
+    elif mode == 'SE':
+        a = np.arange(n_class-1)
+        b = np.arange(n_class)
+        loss_fd = np.abs((a - b[:, None])**2 - (a - b[:, None]+1)**2)
     else:
         raise NotImplementedError
 
@@ -121,9 +125,8 @@ def threshold_predict(X, w, theta):
     """
     Class numbers are assumed to be between 0 and k-1
     """
-    Xw = X.dot(w)
-    tmp = Xw - theta[:, None]
-    pred = np.sum(tmp >= 0, axis=0).astype(np.int)
+    tmp = theta[:, None] - X.dot(w)
+    pred = np.sum(tmp < 0, axis=0).astype(np.int)
     return pred
 
 
@@ -215,6 +218,55 @@ class LogisticIT(base.BaseEstimator):
     def score(self, X, y):
         pred = self.predict(X)
         return metrics.accuracy_score(pred, y)
+
+
+class LogisticSE(base.BaseEstimator):
+    """
+    Classifier that implements the ordinal logistic model
+    (Immediate-Threshold variant).
+
+    Contrary to the OrdinalLogistic model, this variant
+    minimizes a convex surrogate of the 0-1 loss, hence
+    the score associated with this object is the accuracy
+    score, i.e. the same score used in multiclass
+    classification methods (sklearn.metrics.accuracy_score).
+
+    Parameters
+    ----------
+    alpha: float
+        Regularization parameter. Zero is no regularization, higher values
+        increate the squared l2 regularization.
+
+    References
+    ----------
+    J. D. M. Rennie and N. Srebro, "Loss Functions for Preference Levels :
+    Regression with Discrete Ordered Labels," in Proceedings of the IJCAI
+    Multidisciplinary Workshop on Advances in Preference Handling, 2005.
+    """
+    def __init__(self, alpha=1., verbose=0, maxiter=1000):
+        self.alpha = alpha
+        self.verbose = verbose
+        self.maxiter = maxiter
+
+    def fit(self, X, y):
+        _y = np.array(y).astype(np.int)
+        if np.abs(_y - y).sum() > 1e-3:
+            raise ValueError('y must only contain integer values')
+        self.classes_ = np.unique(y)
+        self.n_class_ = self.classes_.max() - self.classes_.min() + 1
+        y_tmp = y - y.min()  # we need classes that start at zero
+        self.coef_, self.theta_ = threshold_fit(
+            X, y_tmp, self.alpha, self.n_class_,
+            mode='SE', verbose=self.verbose, maxiter=self.maxiter)
+        return self
+
+    def predict(self, X):
+        return threshold_predict(X, self.coef_, self.theta_) + self.classes_.min()
+
+    def score(self, X, y):
+        pred = self.predict(X)
+        return - metrics.mean_squared_error(pred, y)
+
 
 
 

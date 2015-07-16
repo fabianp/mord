@@ -4,7 +4,7 @@ import mord
 from nose.tools import assert_almost_equal, assert_less
 
 np.random.seed(0)
-from sklearn import datasets, metrics, svm, cross_validation
+from sklearn import datasets, metrics, svm, cross_validation, linear_model
 n_class = 5
 n_samples = 100
 n_dim = 80
@@ -26,7 +26,7 @@ def test_1():
 
     clf = mord.LogisticIT(alpha=0.)
     clf.fit(X, y)
-    # the score is - absolute error, 0 is perfect
+    # the score is classification error, 1 is perfect
     assert_almost_equal(clf.score(X, y), 1., places=2)
 
 
@@ -48,4 +48,19 @@ def test_grad():
         x, X, y, 100.0, n_class, loss_fd, L)
     assert_less(optimize.check_grad(fun, grad, x0),  0.1)
 
-test_grad()
+
+def test_binary_class():
+    Xc, yc = datasets.make_classification(n_classes=2, n_samples=1000)
+    clf = linear_model.LogisticRegression(C=1e6)
+    clf.fit(Xc[:500], yc[:500])
+    pred_lr = clf.predict(Xc[500:])
+
+    clf = mord.LogisticAT(alpha=1e-6)
+    clf.fit(Xc[:500], yc[:500])
+    pred_at = clf.predict(Xc[500:])
+    assert_almost_equal(np.abs(pred_lr - pred_at).mean(), 0.)
+
+    clf2 = mord.LogisticSE(alpha=1e-6)
+    clf2.fit(Xc[:500], yc[:500])
+    pred_at = clf2.predict(Xc[500:])
+    assert_almost_equal(np.abs(pred_lr - pred_at).mean(), 0.)
