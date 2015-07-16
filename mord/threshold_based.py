@@ -90,7 +90,8 @@ def threshold_fit(X, y, alpha, n_class, mode='AE',
     n_samples, n_features = X.shape
 
     # convert from c to theta
-    L = np.eye(n_class - 1) + np.diag(np.ones(n_class - 2), k=-1)
+    L = np.zeros((n_class - 1, n_class - 1))
+    L[np.tril_indices(n_class-1)] = 1.
 
     if mode == 'AE':
         # loss forward difference
@@ -110,8 +111,11 @@ def threshold_fit(X, y, alpha, n_class, mode='AE',
     x0 = np.zeros(n_features + n_class - 1)
     x0[X.shape[1]:] = np.arange(n_class - 1)
     options = {'maxiter' : maxiter, 'disp': verbose}
-    bounds = [(None, None)] * (n_features) + [(1, 1)] + \
-             [(0, None)] * (n_class - 2)
+    if n_class > 2:
+        bounds = [(None, None)] * (n_features + 1) + \
+                 [(0, None)] * (n_class - 3) + [(1, 1)]
+    else:
+        bounds = None
     sol = optimize.minimize(obj_margin, x0, method='L-BFGS-B',
         jac=grad_margin, args=(X, y, alpha, n_class, loss_fd, L),
         bounds=bounds, options=options, tol=tol)
