@@ -7,28 +7,48 @@ np.random.seed(0)
 from sklearn import datasets, metrics, svm, cross_validation, linear_model
 n_class = 5
 n_samples = 100
-n_dim = 80
+n_dim = 10
 
-X, y = datasets.make_regression(n_samples=n_samples, n_features=n_dim,
-    n_informative=n_dim // 10, noise=20.)
+X = np.random.randn(n_samples, n_dim)
+w = np.random.randn(n_dim)
+y = X.dot(w)
 bins = stats.mstats.mquantiles(y, np.linspace(0, 1, n_class + 1))
 y = np.digitize(y, bins[:-1])
 y -= y.min()
+
+# import pylab as plt
+# plt.scatter(X[:, 0], X[:, 1], c=y)
+# plt.show()
 
 def test_1():
     """
     Test two model in overfit mode
     """
-    clf = mord.LogisticAT(alpha=0.)
-    clf.fit(X, y)
+    clf1 = mord.OrdinalRidge(alpha=0.)
+    clf1.fit(X, y)
+
+    clf2 = mord.LogisticAT(alpha=0.)
+    clf2.fit(X, y)
+
     # the score is - absolute error, 0 is perfect
-    assert_almost_equal(clf.score(X, y), 0., places=2)
+    # assert clf1.score(X, y) < clf2.score(X, y)
 
-    clf = mord.LogisticIT(alpha=0.)
-    clf.fit(X, y)
-    # the score is classification error, 1 is perfect
-    assert_almost_equal(clf.score(X, y), 1., places=2)
+    clf3 = mord.LogisticSE(alpha=0.)
+    clf3.fit(X, y)
+    pred3 = clf3.predict(X)
+    pred2 = clf2.predict(X)
 
+    # check that it predicts better than the surrogate
+    # for other loss
+    assert np.abs(pred2 - y).mean() <= np.abs(pred3 - y).mean()
+    # # the score is - absolute error, 0 is perfect
+    # assert_almost_equal(clf.score(X, y), 0., places=2)
+    #
+    # clf = mord.LogisticIT(alpha=0.)
+    # clf.fit(X, y)
+    # # the score is classification error, 1 is perfect
+    # assert_almost_equal(clf.score(X, y), 1., places=2)
+test_1()
 
 def test_grad():
     x0 = np.random.randn(n_dim + n_class - 1)
@@ -64,3 +84,8 @@ def test_binary_class():
     clf2.fit(Xc[:500], yc[:500])
     pred_at = clf2.predict(Xc[500:])
     assert_almost_equal(np.abs(pred_lr - pred_at).mean(), 0.)
+
+# def test_performance():
+#     clf1 = mord.LogisticAT()
+#     clf1.fit(X, y)
+#     assert_almost_equal(clf1.score(X, y) < )

@@ -5,9 +5,9 @@ This implements the margin-based ordinal regression methods described
 in http://arxiv.org/abs/1408.2327
 """
 import numpy as np
-from scipy import optimize, linalg, stats
-
+from scipy import optimize, stats
 from sklearn import base, metrics
+
 
 def sigmoid(t):
     # sigmoid function, 1 / (1 + exp(-t))
@@ -73,8 +73,34 @@ def grad_margin(x0, X, y, alpha, n_class, weights, L):
     return np.concatenate((grad_w, grad_c), axis=0)
 
 
+def propodds_loss(x0, X, y, alpha, n_class, L):
+    # assumes classes are given between 0 and k-1
+    w = x0[:X.shape[1]]
+    c = x0[X.shape[1]:]
+    theta = L.dot(c)
+    Xw = X.dot(w)
+    Alpha = theta[:, None] - Xw  # (n_class - 1, n_samples)
+    assert n_class >= 2
+    # first class
+    idx = (y == 0)
+    loss = log_loss(Alpha[0, idx])
+    # last class
+    idx = (y == k-1)
+    loss += - np.log(1 - sigmoid(Alpha[-1, idx]))
+    # the ones in the middle
+    for j in range(np.min(y) + 1, np.max(y) - 1):
+        idx = (y == j)
+        loss += - np.log(sigmoid[Alpha[j, idx]] - sigmoid(Alpha[-1, idx]))
+    tmp = (Alpha[0], np.diff(sigmoid(Alpha), axis=0), 1 - sigmoid(Alpha[-1]))
+    S = np.concatenate(tmp, axis=0)
+    loss = np.sum(S)
+    1/0
+
+    raise NotImplementedError
+
+
 def threshold_fit(X, y, alpha, n_class, mode='AE',
-                  maxiter=1000, verbose=False, tol=1e-4):
+                  maxiter=1000, verbose=False, tol=1e-12):
     """
     Solve the general threshold-based ordinal regression model
     using the logistic loss as surrogate of the 0-1 loss
@@ -114,6 +140,8 @@ def threshold_fit(X, y, alpha, n_class, mode='AE',
     if n_class > 2:
         bounds = [(None, None)] * (n_features + 1) + \
                  [(0, None)] * (n_class - 3) + [(1, 1)]
+        bounds = [(None, None)] * (n_features + 1) + \
+                 [(0, None)] * (n_class - 2)
     else:
         bounds = None
     sol = optimize.minimize(obj_margin, x0, method='L-BFGS-B',
@@ -121,6 +149,7 @@ def threshold_fit(X, y, alpha, n_class, mode='AE',
         bounds=bounds, options=options, tol=tol)
     if not sol.success:
         print(sol.message)
+    print(sol.message)
     w, c = sol.x[:X.shape[1]], sol.x[X.shape[1]:]
     theta = L.dot(c)
     return w, theta
@@ -133,7 +162,6 @@ def threshold_predict(X, w, theta):
     tmp = theta[:, None] - X.dot(w)
     pred = np.sum(tmp < 0, axis=0).astype(np.int)
     return pred
-
 
 
 class LogisticAT(base.BaseEstimator):
@@ -163,7 +191,7 @@ class LogisticAT(base.BaseEstimator):
             raise ValueError('y must only contain integer values')
         self.classes_ = np.unique(y)
         self.n_class_ = self.classes_.max() - self.classes_.min() + 1
-        y_tmp = y - y.min() # we need classes that start at zero
+        y_tmp = y - y.min()  # we need classes that start at zero
         self.coef_, self.theta_ = threshold_fit(X, y_tmp, self.alpha, self.n_class_,
                                                 mode='AE', verbose=self.verbose)
         return self
@@ -174,7 +202,6 @@ class LogisticAT(base.BaseEstimator):
     def score(self, X, y):
         pred = self.predict(X)
         return - metrics.mean_absolute_error(pred, y)
-
 
 
 class LogisticIT(base.BaseEstimator):
@@ -211,7 +238,7 @@ class LogisticIT(base.BaseEstimator):
             raise ValueError('y must only contain integer values')
         self.classes_ = np.unique(y)
         self.n_class_ = self.classes_.max() - self.classes_.min() + 1
-        y_tmp = y - y.min() # we need classes that start at zero
+        y_tmp = y - y.min()  # we need classes that start at zero
         self.coef_, self.theta_ = threshold_fit(
             X, y_tmp, self.alpha, self.n_class_,
             mode='0-1', verbose=self.verbose, maxiter=self.maxiter)
@@ -248,7 +275,7 @@ class LogisticSE(base.BaseEstimator):
     Regression with Discrete Ordered Labels," in Proceedings of the IJCAI
     Multidisciplinary Workshop on Advances in Preference Handling, 2005.
     """
-    def __init__(self, alpha=1., verbose=0, maxiter=1000):
+    def __init__(self, alpha=1., verbose=0, maxiter=100000):
         self.alpha = alpha
         self.verbose = verbose
         self.maxiter = maxiter
