@@ -1,5 +1,5 @@
 import numpy as np
-from scipy import stats, optimize, linalg
+from scipy import stats, optimize, linalg, sparse
 import mord
 from nose.tools import assert_almost_equal, assert_less
 
@@ -48,7 +48,15 @@ def test_1():
     # clf.fit(X, y)
     # # the score is classification error, 1 is perfect
     # assert_almost_equal(clf.score(X, y), 1., places=2)
-test_1()
+
+    # test on sparse matrices
+    X_sparse = sparse.csr_matrix(X)
+    clf4 = mord.LogisticAT(alpha=0.)
+    clf4.fit(X_sparse, y)
+    pred4 = clf4.predict(X_sparse)
+    assert metrics.mean_absolute_error(y, pred4) < 1.
+
+
 
 def test_grad():
     x0 = np.random.randn(n_dim + n_class - 1)

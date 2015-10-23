@@ -112,7 +112,7 @@ def threshold_fit(X, y, alpha, n_class, mode='AE',
 
     """
 
-    X, y = check_X_y(X, y)
+    X, y = check_X_y(X, y, accept_sparse='csr')
     unique_y = np.sort(np.unique(y))
     if not np.all(unique_y == np.arange(unique_y.size)):
         raise ValueError(
