@@ -5,8 +5,9 @@ This implements the margin-based ordinal regression methods described
 in http://arxiv.org/abs/1408.2327
 """
 import numpy as np
-from scipy import optimize, stats
+from scipy import optimize
 from sklearn import base, metrics
+from sklearn.utils.validation import check_X_y
 
 
 def sigmoid(t):
@@ -85,7 +86,7 @@ def propodds_loss(x0, X, y, alpha, n_class, L):
     idx = (y == 0)
     loss = log_loss(Alpha[0, idx])
     # last class
-    idx = (y == k-1)
+    idx = (y == k - 1)
     loss += - np.log(1 - sigmoid(Alpha[-1, idx]))
     # the ones in the middle
     for j in range(np.min(y) + 1, np.max(y) - 1):
@@ -111,7 +112,12 @@ def threshold_fit(X, y, alpha, n_class, mode='AE',
 
     """
 
-    X = np.asarray(X)
+    X, y = check_X_y(X, y)
+    unique_y = np.sort(np.unique(y))
+    if not np.all(unique_y == np.arange(unique_y.size)):
+        raise ValueError(
+            'Values in y must be %s, got instead %s'
+            % (unique_y, np.arange(unique_y.size)))
     y = np.asarray(y)  # XXX check its made of integers
     n_samples, n_features = X.shape
 
@@ -125,7 +131,7 @@ def threshold_fit(X, y, alpha, n_class, mode='AE',
     elif mode == '0-1':
         loss_fd = np.diag(np.ones(n_class - 1)) + \
             np.diag(np.ones(n_class - 2), k=-1)
-        loss_fd = np.vstack((loss_fd, np.zeros(n_class -1)))
+        loss_fd = np.vstack((loss_fd, np.zeros(n_class - 1)))
         loss_fd[-1, -1] = 1  # border case
     elif mode == 'SE':
         a = np.arange(n_class-1)
@@ -192,12 +198,14 @@ class LogisticAT(base.BaseEstimator):
         self.classes_ = np.unique(y)
         self.n_class_ = self.classes_.max() - self.classes_.min() + 1
         y_tmp = y - y.min()  # we need classes that start at zero
-        self.coef_, self.theta_ = threshold_fit(X, y_tmp, self.alpha, self.n_class_,
-                                                mode='AE', verbose=self.verbose)
+        self.coef_, self.theta_ = threshold_fit(
+            X, y_tmp, self.alpha, self.n_class_, mode='AE',
+            verbose=self.verbose)
         return self
 
     def predict(self, X):
-        return threshold_predict(X, self.coef_, self.theta_) + self.classes_.min()
+        return threshold_predict(X, self.coef_, self.theta_) +\
+         self.classes_.min()
 
     def score(self, X, y):
         pred = self.predict(X)
@@ -245,7 +253,8 @@ class LogisticIT(base.BaseEstimator):
         return self
 
     def predict(self, X):
-        return threshold_predict(X, self.coef_, self.theta_) + self.classes_.min()
+        return threshold_predict(X, self.coef_, self.theta_) +\
+         self.classes_.min()
 
     def score(self, X, y):
         pred = self.predict(X)
@@ -293,46 +302,9 @@ class LogisticSE(base.BaseEstimator):
         return self
 
     def predict(self, X):
-        return threshold_predict(X, self.coef_, self.theta_) + self.classes_.min()
+        return threshold_predict(X, self.coef_, self.theta_) +\
+         self.classes_.min()
 
     def score(self, X, y):
         pred = self.predict(X)
         return - metrics.mean_squared_error(pred, y)
-
-
-
-
-
-if __name__ == '__main__':
-
-    np.random.seed(0)
-    from sklearn import datasets, metrics, svm, cross_validation
-    n_class = 3
-    n_samples = 200
-    n_dim = 100
-
-    X, y = datasets.make_regression(n_samples=n_samples, n_features=n_dim,
-                                    n_informative=n_dim // 10, noise=20.)
-
-    bins = stats.mstats.mquantiles(y, np.linspace(0, 1, n_class + 1))
-    y = np.digitize(y, bins[:-1])
-    y -= np.min(y)
-
-    # test that the gradient is correct
-    x0 = np.random.randn(X.shape[1] + n_class - 1)
-
-    loss_fd = np.diag(np.ones(n_class - 1)) + \
-        np.diag(np.ones(n_class - 2), k=-1)
-    loss_fd = np.vstack((loss_fd, np.zeros(n_class -1)))
-    loss_fd[-1, -1] = 1
-    print(optimize.check_grad(obj_margin, grad_margin, x0, X, y, 1., n_class,
-                              loss_fd))
-
-    cv = cross_validation.KFold(y.size)
-
-    for clf in [LogisticAT(), OrdinalRidge(), LAD()]:
-        print(np.mean(cross_validation.cross_val_score(clf, X, y, cv=cv)))
-
-    print()
-    for clf in [LogisticAT(mode='0-1'), svm.SVC()]:
-        print(np.mean(cross_validation.cross_val_score(clf, X, y, cv=cv)))
