@@ -101,7 +101,7 @@ def propodds_loss(x0, X, y, alpha, n_class, L):
 
 
 def threshold_fit(X, y, alpha, n_class, mode='AE',
-                  maxiter=1000, verbose=False, tol=1e-12):
+                  max_iter=1000, verbose=False, tol=1e-12):
     """
     Solve the general threshold-based ordinal regression model
     using the logistic loss as surrogate of the 0-1 loss
@@ -142,7 +142,7 @@ def threshold_fit(X, y, alpha, n_class, mode='AE',
 
     x0 = np.zeros(n_features + n_class - 1)
     x0[X.shape[1]:] = np.arange(n_class - 1)
-    options = {'maxiter' : maxiter, 'disp': verbose}
+    options = {'maxiter' : max_iter, 'disp': verbose}
     if n_class > 2:
         bounds = [(None, None)] * (n_features + 1) + \
                  [(0, None)] * (n_class - 3) + [(1, 1)]
@@ -186,10 +186,10 @@ class LogisticAT(base.BaseEstimator):
     Regression with Discrete Ordered Labels," in Proceedings of the IJCAI
     Multidisciplinary Workshop on Advances in Preference Handling, 2005.
     """
-    def __init__(self, alpha=1., verbose=0, maxiter=1000):
+    def __init__(self, alpha=1., verbose=0, max_iter=1000):
         self.alpha = alpha
         self.verbose = verbose
-        self.maxiter = maxiter
+        self.max_iter = max_iter
 
     def fit(self, X, y):
         _y = np.array(y).astype(np.int)
@@ -200,7 +200,7 @@ class LogisticAT(base.BaseEstimator):
         y_tmp = y - y.min()  # we need classes that start at zero
         self.coef_, self.theta_ = threshold_fit(
             X, y_tmp, self.alpha, self.n_class_, mode='AE',
-            verbose=self.verbose)
+            verbose=self.verbose, max_iter=self.max_iter)
         return self
 
     def predict(self, X):
@@ -249,7 +249,7 @@ class LogisticIT(base.BaseEstimator):
         y_tmp = y - y.min()  # we need classes that start at zero
         self.coef_, self.theta_ = threshold_fit(
             X, y_tmp, self.alpha, self.n_class_,
-            mode='0-1', verbose=self.verbose, maxiter=self.maxiter)
+            mode='0-1', verbose=self.verbose, max_iter=self.max_iter)
         return self
 
     def predict(self, X):
