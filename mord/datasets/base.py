@@ -9,8 +9,8 @@ def load_housing():
        (ordinal classification).
 
     ==============     ==============
-    Samples total                 506
-    Dimensionality                 4
+    Samples total                1681
+    Dimensionality                  3
     Features              categorical
     Targets       ordered categorical
     ==============     ==============
