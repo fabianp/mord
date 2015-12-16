@@ -5,9 +5,9 @@ Notes
 ------
 Data Set Characteristics:
 
-    :Number of Instances: 72
+    :Number of Instances: 1681
 
-    :Number of Attributes: 3 categorical, 1 numeric set of frequencies.
+    :Number of Attributes: 3 categorical
 
     :Sat (attribute 1) is usually the target
 
@@ -16,7 +16,6 @@ Data Set Characteristics:
         - Infl  Perceived degree of influence householders have on the management of the property (High, Medium, Low).
         - Type  Type of rental accommodation, (Tower, Atrium, Apartment, Terrace).
         - Cont  Contact residents are afforded with other residents, (Low, High).
-        - Freq  Frequencies: the numbers of residents in each class.
 
     :Missing Attribute Values: None
 
@@ -32,4 +31,3 @@ This dataset was taken from the MASS library which is maintained at the Comprehe
 
     - Madsen, M. (1976) Statistical analysis of multiple contingency tables. Two examples. Scand. J. Statist. 3, 97–106.
     - Cox, D. R. and Snell, E. J. (1984) Applied Statistics, Principles and Examples. Chapman & Hall.
-
