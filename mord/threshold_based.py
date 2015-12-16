@@ -108,7 +108,7 @@ def threshold_fit(X, y, alpha, n_class, mode='AE',
 
     Parameters
     ----------
-    mode : string, one of {'AE', '0-1'}
+    mode : string, one of {'AE', '0-1', 'SE'}
 
     """
 
@@ -116,9 +116,9 @@ def threshold_fit(X, y, alpha, n_class, mode='AE',
     unique_y = np.sort(np.unique(y))
     if not np.all(unique_y == np.arange(unique_y.size)):
         raise ValueError(
-            'Values in y must be %s, got instead %s'
-            % (unique_y, np.arange(unique_y.size)))
-    y = np.asarray(y)  # XXX check its made of integers
+            'Values in y must be %s, instead got %s'
+            % (np.arange(unique_y.size), unique_y))
+
     n_samples, n_features = X.shape
 
     # convert from c to theta
@@ -145,17 +145,17 @@ def threshold_fit(X, y, alpha, n_class, mode='AE',
     options = {'maxiter' : maxiter, 'disp': verbose}
     if n_class > 2:
         bounds = [(None, None)] * (n_features + 1) + \
-                 [(0, None)] * (n_class - 3) + [(1, 1)]
-        bounds = [(None, None)] * (n_features + 1) + \
                  [(0, None)] * (n_class - 2)
     else:
         bounds = None
+
     sol = optimize.minimize(obj_margin, x0, method='L-BFGS-B',
         jac=grad_margin, args=(X, y, alpha, n_class, loss_fd, L),
         bounds=bounds, options=options, tol=tol)
     if not sol.success:
         print(sol.message)
     print(sol.message)
+
     w, c = sol.x[:X.shape[1]], sol.x[X.shape[1]:]
     theta = L.dot(c)
     return w, theta
@@ -165,7 +165,7 @@ def threshold_predict(X, w, theta):
     """
     Class numbers are assumed to be between 0 and k-1
     """
-    tmp = theta[:, None] - X.dot(w)
+    tmp = theta[:, None] - np.asarray(X.dot(w))
     pred = np.sum(tmp < 0, axis=0).astype(np.int)
     return pred
 
@@ -264,19 +264,18 @@ class LogisticIT(base.BaseEstimator):
 class LogisticSE(base.BaseEstimator):
     """
     Classifier that implements the ordinal logistic model
-    (Immediate-Threshold variant).
+    (Squared Error variant).
 
     Contrary to the OrdinalLogistic model, this variant
-    minimizes a convex surrogate of the 0-1 loss, hence
-    the score associated with this object is the accuracy
-    score, i.e. the same score used in multiclass
-    classification methods (sklearn.metrics.accuracy_score).
+    minimizes a convex surrogate of the 0-1 (?) loss ...
+
+    TODO: double check this description (XXX)
 
     Parameters
     ----------
     alpha: float
         Regularization parameter. Zero is no regularization, higher values
-        increate the squared l2 regularization.
+        increase the squared l2 regularization.
 
     References
     ----------
