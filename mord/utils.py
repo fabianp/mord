@@ -1,6 +1,5 @@
 import numpy as np
-from sklearn import cross_validation
- 
+
 class OverfittingCV:
     def __init__(self, n, n_iter):
         self.n = n
@@ -11,4 +10,4 @@ class OverfittingCV:
             train = np.arange(self.n)
             test = train
             yield train, test
-        
+
