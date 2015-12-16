@@ -1,10 +1,10 @@
 import numpy as np
-from scipy import stats, optimize, linalg, sparse
+from scipy import stats, optimize, sparse
 import mord
 from nose.tools import assert_almost_equal, assert_less
 
 np.random.seed(0)
-from sklearn import datasets, metrics, svm, cross_validation, linear_model
+from sklearn import datasets, metrics, linear_model
 n_class = 5
 n_samples = 100
 n_dim = 10
