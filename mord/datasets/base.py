@@ -1,10 +1,10 @@
 from os.path import dirname, join
 
 import numpy as np
-from pandas import read_csv
 from sklearn.datasets.base import Bunch
 
 def load_housing():
+    from pandas import read_csv
     """Load and return the Copenhagen housing survey dataset
        (ordinal classification).
 
