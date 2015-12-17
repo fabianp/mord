@@ -1,4 +1,3 @@
-
 import numpy as np
 from sklearn import linear_model, svm, metrics
 
@@ -18,7 +17,7 @@ class OrdinalRidge(linear_model.Ridge):
         return self
 
     def predict(self, X):
-        pred =  np.round(super(linear_model.Ridge, self).predict(X))
+        pred = np.round(super(linear_model.Ridge, self).predict(X))
         pred = np.clip(pred, 0, self.unique_y_.max())
         return pred
 
