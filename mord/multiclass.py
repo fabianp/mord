@@ -27,6 +27,8 @@ def multiclass_fit(X, y, alpha, n_class, maxiter=100000):
     """
     Multiclass classification with absolute error cost
 
+    References
+    ----------
     Lee, Yoonkyung, Yi Lin, and Grace Wahba. "Multicategory support
     vector machines: Theory and application to the classification of
     microarray data and satellite radiance data." Journal of the
