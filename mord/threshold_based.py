@@ -152,9 +152,8 @@ def threshold_fit(X, y, alpha, n_class, mode='AE',
     sol = optimize.minimize(obj_margin, x0, method='L-BFGS-B',
         jac=grad_margin, args=(X, y, alpha, n_class, loss_fd, L),
         bounds=bounds, options=options, tol=tol)
-    if not sol.success:
+    if verbose and not sol.success:
         print(sol.message)
-    print(sol.message)
 
     w, c = sol.x[:X.shape[1]], sol.x[X.shape[1]:]
     theta = L.dot(c)
