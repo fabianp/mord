@@ -11,9 +11,9 @@ class OrdinalRidge(linear_model.Ridge):
     on why this cannot be accomplished using a GridSearchCV object)
     """
 
-    def fit(self, X, y):
+    def fit(self, X, y, **fit_params):
         self.unique_y_ = np.unique(y)
-        super(linear_model.Ridge, self).fit(X, y)
+        super(linear_model.Ridge, self).fit(X, y, **fit_params)
         return self
 
     def predict(self, X):
