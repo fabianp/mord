@@ -169,6 +169,20 @@ def threshold_predict(X, w, theta):
     return pred
 
 
+def threshold_proba(X, w, theta):
+    """
+    Class numbers are assumed to be between 0 and k-1. Assumes
+    the `sigmoid` link function is used.
+    """
+    eta = theta[:, None] - np.asarray(X.dot(w), dtype=np.float64)
+    prob = np.pad(
+        sigmoid(-eta).T,
+        pad_width=((0, 0), (1, 1)),
+        mode='constant',
+        constant_values=(0, 1))
+    return np.diff(prob)
+
+
 class LogisticAT(base.BaseEstimator):
     """
     Classifier that implements the ordinal logistic model (All-Threshold variant)
@@ -205,6 +219,9 @@ class LogisticAT(base.BaseEstimator):
     def predict(self, X):
         return threshold_predict(X, self.coef_, self.theta_) +\
          self.classes_.min()
+
+    def predict_proba(self, X):
+        return threshold_proba(X, self.coef_, self.theta_)
 
     def score(self, X, y):
         pred = self.predict(X)
@@ -255,6 +272,9 @@ class LogisticIT(base.BaseEstimator):
         return threshold_predict(X, self.coef_, self.theta_) +\
          self.classes_.min()
 
+    def predict_proba(self, X):
+        return threshold_proba(X, self.coef_, self.theta_)
+
     def score(self, X, y):
         pred = self.predict(X)
         return metrics.accuracy_score(pred, y)
@@ -302,6 +322,9 @@ class LogisticSE(base.BaseEstimator):
     def predict(self, X):
         return threshold_predict(X, self.coef_, self.theta_) +\
          self.classes_.min()
+
+    def predict_proba(self, X):
+        return threshold_proba(X, self.coef_, self.theta_)
 
     def score(self, X, y):
         pred = self.predict(X)
