@@ -21,7 +21,7 @@ le = preprocessing.LabelEncoder()
 le.fit(features.loc[:,'Type'])
 features.loc[:,'type_encoded'] = le.transform(features.loc[:,'Type'])
 
-X, y = features.ix[:,('Infl', 'Cont', 'type_encoded')], data.target
+X, y = features.loc[:,('Infl', 'Cont', 'type_encoded')], data.target
 
 clf1 = linear_model.LogisticRegression(
     solver='lbfgs',

@@ -30,7 +30,7 @@ def log_loss(Z):
     return out
 
 
-def obj_margin(x0, X, y, alpha, n_class, weights, L):
+def obj_margin(x0, X, y, alpha, n_class, weights, L, sample_weight):
     """
     Objective function for the general margin-based formulation
     """
@@ -44,12 +44,12 @@ def obj_margin(x0, X, y, alpha, n_class, weights, L):
     Alpha = theta[:, None] - Xw  # (n_class - 1, n_samples)
     S = np.sign(np.arange(n_class - 1)[:, None] - y + 0.5)
 
-    obj = np.sum(loss_fd.T * log_loss(S * Alpha)) + \
-        alpha * 0.5 * (np.dot(w, w))
+    obj = np.sum(sample_weight * loss_fd.T * log_loss(S * Alpha))
+    obj += alpha * 0.5 * (np.dot(w, w))
     return obj
 
 
-def grad_margin(x0, X, y, alpha, n_class, weights, L):
+def grad_margin(x0, X, y, alpha, n_class, weights, L, sample_weight):
     """
     Gradient for the general margin-based formulation
     """
@@ -65,7 +65,7 @@ def grad_margin(x0, X, y, alpha, n_class, weights, L):
     # Alpha[idx] *= -1
     # W[idx.T] *= -1
 
-    Sigma = S * loss_fd.T * sigmoid(-S * Alpha)
+    Sigma = sample_weight * S * loss_fd.T * sigmoid(-S * Alpha)
 
     grad_w = X.T.dot(Sigma.sum(0)) + alpha * w
 
@@ -74,34 +74,9 @@ def grad_margin(x0, X, y, alpha, n_class, weights, L):
     return np.concatenate((grad_w, grad_c), axis=0)
 
 
-def propodds_loss(x0, X, y, alpha, n_class, L):
-    # assumes classes are given between 0 and k-1
-    w = x0[:X.shape[1]]
-    c = x0[X.shape[1]:]
-    theta = L.dot(c)
-    Xw = X.dot(w)
-    Alpha = theta[:, None] - Xw  # (n_class - 1, n_samples)
-    assert n_class >= 2
-    # first class
-    idx = (y == 0)
-    loss = log_loss(Alpha[0, idx])
-    # last class
-    idx = (y == k - 1)
-    loss += - np.log(1 - sigmoid(Alpha[-1, idx]))
-    # the ones in the middle
-    for j in range(np.min(y) + 1, np.max(y) - 1):
-        idx = (y == j)
-        loss += - np.log(sigmoid[Alpha[j, idx]] - sigmoid(Alpha[-1, idx]))
-    tmp = (Alpha[0], np.diff(sigmoid(Alpha), axis=0), 1 - sigmoid(Alpha[-1]))
-    S = np.concatenate(tmp, axis=0)
-    loss = np.sum(S)
-    1/0
-
-    raise NotImplementedError
-
-
 def threshold_fit(X, y, alpha, n_class, mode='AE',
-                  max_iter=1000, verbose=False, tol=1e-12):
+                  max_iter=1000, verbose=False, tol=1e-12,
+                  sample_weight=None):
     """
     Solve the general threshold-based ordinal regression model
     using the logistic loss as surrogate of the 0-1 loss
@@ -150,8 +125,9 @@ def threshold_fit(X, y, alpha, n_class, mode='AE',
         bounds = None
 
     sol = optimize.minimize(obj_margin, x0, method='L-BFGS-B',
-        jac=grad_margin, args=(X, y, alpha, n_class, loss_fd, L),
-        bounds=bounds, options=options, tol=tol)
+        jac=grad_margin, bounds=bounds, options=options,
+        args=(X, y, alpha, n_class, loss_fd, L, sample_weight),
+        tol=tol)
     if verbose and not sol.success:
         print(sol.message)
 
@@ -167,6 +143,20 @@ def threshold_predict(X, w, theta):
     tmp = theta[:, None] - np.asarray(X.dot(w))
     pred = np.sum(tmp < 0, axis=0).astype(np.int)
     return pred
+
+
+def threshold_proba(X, w, theta):
+    """
+    Class numbers are assumed to be between 0 and k-1. Assumes
+    the `sigmoid` link function is used.
+    """
+    eta = theta[:, None] - np.asarray(X.dot(w), dtype=np.float64)
+    prob = np.pad(
+        sigmoid(-eta).T,
+        pad_width=((0, 0), (1, 1)),
+        mode='constant',
+        constant_values=(0, 1))
+    return np.diff(prob)
 
 
 class LogisticAT(base.BaseEstimator):
@@ -190,7 +180,7 @@ class LogisticAT(base.BaseEstimator):
         self.verbose = verbose
         self.max_iter = max_iter
 
-    def fit(self, X, y):
+    def fit(self, X, y, sample_weight=None):
         _y = np.array(y).astype(np.int)
         if np.abs(_y - y).sum() > 0.1:
             raise ValueError('y must only contain integer values')
@@ -199,16 +189,23 @@ class LogisticAT(base.BaseEstimator):
         y_tmp = y - y.min()  # we need classes that start at zero
         self.coef_, self.theta_ = threshold_fit(
             X, y_tmp, self.alpha, self.n_class_, mode='AE',
-            verbose=self.verbose, max_iter=self.max_iter)
+            verbose=self.verbose, max_iter=self.max_iter,
+            sample_weight=sample_weight)
         return self
 
     def predict(self, X):
         return threshold_predict(X, self.coef_, self.theta_) +\
          self.classes_.min()
 
-    def score(self, X, y):
+    def predict_proba(self, X):
+        return threshold_proba(X, self.coef_, self.theta_)
+
+    def score(self, X, y, sample_weight=None):
         pred = self.predict(X)
-        return - metrics.mean_absolute_error(pred, y)
+        return -metrics.mean_absolute_error(
+            pred,
+            y,
+            sample_weight=sample_weight)
 
 
 class LogisticIT(base.BaseEstimator):
@@ -239,7 +236,7 @@ class LogisticIT(base.BaseEstimator):
         self.verbose = verbose
         self.max_iter = max_iter
 
-    def fit(self, X, y):
+    def fit(self, X, y, sample_weight=None):
         _y = np.array(y).astype(np.int)
         if np.abs(_y - y).sum() > 0.1:
             raise ValueError('y must only contain integer values')
@@ -248,16 +245,23 @@ class LogisticIT(base.BaseEstimator):
         y_tmp = y - y.min()  # we need classes that start at zero
         self.coef_, self.theta_ = threshold_fit(
             X, y_tmp, self.alpha, self.n_class_,
-            mode='0-1', verbose=self.verbose, max_iter=self.max_iter)
+            mode='0-1', verbose=self.verbose, max_iter=self.max_iter,
+            sample_weight=sample_weight)
         return self
 
     def predict(self, X):
         return threshold_predict(X, self.coef_, self.theta_) +\
          self.classes_.min()
 
-    def score(self, X, y):
+    def predict_proba(self, X):
+        return threshold_proba(X, self.coef_, self.theta_)
+
+    def score(self, X, y, sample_weight=None):
         pred = self.predict(X)
-        return metrics.accuracy_score(pred, y)
+        return metrics.accuracy_score(
+            pred,
+            y,
+            sample_weight=sample_weight)
 
 
 class LogisticSE(base.BaseEstimator):
@@ -287,7 +291,7 @@ class LogisticSE(base.BaseEstimator):
         self.verbose = verbose
         self.max_iter = max_iter
 
-    def fit(self, X, y):
+    def fit(self, X, y, sample_weight=None):
         _y = np.array(y).astype(np.int)
         if np.abs(_y - y).sum() > 1e-3:
             raise ValueError('y must only contain integer values')
@@ -296,13 +300,20 @@ class LogisticSE(base.BaseEstimator):
         y_tmp = y - y.min()  # we need classes that start at zero
         self.coef_, self.theta_ = threshold_fit(
             X, y_tmp, self.alpha, self.n_class_,
-            mode='SE', verbose=self.verbose, max_iter=self.max_iter)
+            mode='SE', verbose=self.verbose, max_iter=self.max_iter,
+            sample_weight=sample_weight)
         return self
 
     def predict(self, X):
         return threshold_predict(X, self.coef_, self.theta_) +\
          self.classes_.min()
 
-    def score(self, X, y):
+    def predict_proba(self, X):
+        return threshold_proba(X, self.coef_, self.theta_)
+
+    def score(self, X, y, sample_weight=None):
         pred = self.predict(X)
-        return - metrics.mean_squared_error(pred, y)
+        return -metrics.mean_squared_error(
+            pred,
+            y,
+            sample_weight=sample_weight)
