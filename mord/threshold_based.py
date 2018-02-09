@@ -44,7 +44,10 @@ def obj_margin(x0, X, y, alpha, n_class, weights, L, sample_weight):
     Alpha = theta[:, None] - Xw  # (n_class - 1, n_samples)
     S = np.sign(np.arange(n_class - 1)[:, None] - y + 0.5)
 
-    obj = np.sum(sample_weight * loss_fd.T * log_loss(S * Alpha))
+    err = loss_fd.T * log_loss(S * Alpha)
+    if sample_weight is not None:
+        err *= sample_weight
+    obj = np.sum(err)
     obj += alpha * 0.5 * (np.dot(w, w))
     return obj
 
@@ -65,7 +68,9 @@ def grad_margin(x0, X, y, alpha, n_class, weights, L, sample_weight):
     # Alpha[idx] *= -1
     # W[idx.T] *= -1
 
-    Sigma = sample_weight * S * loss_fd.T * sigmoid(-S * Alpha)
+    Sigma = S * loss_fd.T * sigmoid(-S * Alpha)
+    if sample_weight is not None:
+        Sigma *= sample_weight
 
     grad_w = X.T.dot(Sigma.sum(0)) + alpha * w
 

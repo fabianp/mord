@@ -1,10 +1,12 @@
 import numpy as np
 from scipy import stats, optimize, sparse
 import mord
+import functools
 from nose.tools import assert_almost_equal, assert_less
 
 np.random.seed(0)
 from sklearn import datasets, metrics, linear_model
+
 n_class = 5
 n_samples = 100
 n_dim = 10
@@ -15,6 +17,7 @@ y = X.dot(w)
 bins = stats.mstats.mquantiles(y, np.linspace(0, 1, n_class + 1))
 y = np.digitize(y, bins[:-1])
 y -= y.min()
+
 
 # import pylab as plt
 # plt.scatter(X[:, 0], X[:, 1], c=y)
@@ -57,24 +60,38 @@ def test_1():
     assert metrics.mean_absolute_error(y, pred4) < 1.
 
 
-
 def test_grad():
     x0 = np.random.randn(n_dim + n_class - 1)
-    x0[n_dim+1:] = np.abs(x0[n_dim+1:])
+    x0[n_dim + 1:] = np.abs(x0[n_dim + 1:])
 
     loss_fd = np.diag(np.ones(n_class - 1)) + \
-        np.diag(np.ones(n_class - 2), k=-1)
-    loss_fd = np.vstack((loss_fd, np.zeros(n_class -1)))
+              np.diag(np.ones(n_class - 2), k=-1)
+    loss_fd = np.vstack((loss_fd, np.zeros(n_class - 1)))
     loss_fd[-1, -1] = 1  # border case
 
     L = np.eye(n_class - 1) - np.diag(np.ones(n_class - 2), k=-1)
 
+    def fun(x, sample_weights=None):
+        return mord.threshold_based.obj_margin(
+            x, X, y, 100.0, n_class, loss_fd, L, sample_weights)
 
-    fun = lambda x: mord.threshold_based.obj_margin(
-        x, X, y, 100.0, n_class, loss_fd, L)
-    grad = lambda x: mord.threshold_based.grad_margin(
-        x, X, y, 100.0, n_class, loss_fd, L)
-    assert_less(optimize.check_grad(fun, grad, x0),  0.1)
+    def grad(x, sample_weights=None):
+        return mord.threshold_based.grad_margin(
+            x, X, y, 100.0, n_class, loss_fd, L, sample_weights)
+
+    assert_less(
+        optimize.check_grad(fun, grad, x0),
+        1e-4,
+        msg='unweighted')
+
+    sample_weights = np.random.rand(n_samples)
+    assert_less(
+        optimize.check_grad(
+            functools.partial(fun, sample_weights=sample_weights),
+            functools.partial(grad, sample_weights=sample_weights),
+            x0),
+        1e-4,
+        msg='weighted')
 
 
 def test_binary_class():
