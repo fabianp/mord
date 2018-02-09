@@ -24,3 +24,7 @@ install:
   - source activate test-environment
 script:
 - nosetests -v
+addons:
+  apt:
+    packages:
+    - libopenblas-dev
