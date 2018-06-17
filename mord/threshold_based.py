@@ -157,7 +157,7 @@ def threshold_proba(X, w, theta):
     """
     eta = theta[:, None] - np.asarray(X.dot(w), dtype=np.float64)
     prob = np.pad(
-        sigmoid(-eta).T,
+        sigmoid(eta).T,
         pad_width=((0, 0), (1, 1)),
         mode='constant',
         constant_values=(0, 1))

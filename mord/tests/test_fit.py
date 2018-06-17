@@ -2,7 +2,7 @@ import numpy as np
 from scipy import stats, optimize, sparse
 import mord
 import functools
-from nose.tools import assert_almost_equal, assert_less
+from nose.tools import assert_almost_equal, assert_greater_equal, assert_less
 
 np.random.seed(0)
 from sklearn import datasets, metrics, linear_model
@@ -114,3 +114,25 @@ def test_binary_class():
 #     clf1 = mord.LogisticAT()
 #     clf1.fit(X, y)
 #     assert_almost_equal(clf1.score(X, y) < )
+
+
+def test_predict_proba_nonnegative():
+    """
+    Test that predict_proba() function outputs a tuple of non-negative values
+    """
+
+    def check_for_negative_prob(proba):
+        for p in np.ravel(proba):
+            assert_greater_equal(np.round(p,7), 0)
+
+    clf = mord.LogisticAT(alpha=0.)
+    clf.fit(X, y)
+    check_for_negative_prob(clf.predict_proba(X))
+
+    clf2 = mord.LogisticIT(alpha=0.)
+    clf2.fit(X, y)
+    check_for_negative_prob(clf2.predict_proba(X))
+
+    clf3 = mord.LogisticSE(alpha=0.)
+    clf3.fit(X, y)
+    check_for_negative_prob(clf3.predict_proba(X))
