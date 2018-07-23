@@ -9,5 +9,5 @@ setup(
     author_email='f@bianp.net',
     url='https://pypi.python.org/pypi/mord',
     packages=['mord'],
-    requires=['numpy', 'scipy', "scikit-learn"],
+    requires=['numpy', 'scipy', "sklearn"],
 )
