@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='mord',
-    version="0.5",
+    version="0.6",
     description='Ordinal regression models',
     long_description=open('README.rst').read(),
     author='Fabian Pedregosa',

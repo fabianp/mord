@@ -3,4 +3,4 @@ from .regression_based import *
 from . import utils
 from . import threshold_based
 
-__version__ = '0.5'
+__version__ = '0.6'
