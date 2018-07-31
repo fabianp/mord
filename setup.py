@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='mord',
@@ -8,6 +8,7 @@ setup(
     author='Fabian Pedregosa',
     author_email='f@bianp.net',
     url='https://pypi.python.org/pypi/mord',
-    packages=['mord'],
+    packages=find_packages(exclude=["*.tests", "*.tests.*", "tests.*", "tests"]),
+    include_package_data=True,
     requires=['numpy', 'scipy', "sklearn"],
 )
