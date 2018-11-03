@@ -30,7 +30,7 @@ def log_loss(Z):
     return out
 
 
-def obj_margin(x0, X, y, alpha, n_class, weights, L, sample_weight):
+def obj_margin(x0, X, y, alpha, n_class, weights, L, sample_weight, reg):
     """
     Objective function for the general margin-based formulation
     """
@@ -48,11 +48,16 @@ def obj_margin(x0, X, y, alpha, n_class, weights, L, sample_weight):
     if sample_weight is not None:
         err *= sample_weight
     obj = np.sum(err)
-    obj += alpha * 0.5 * (np.dot(w, w))
+    if reg == 'l2':
+        obj += alpha * 0.5 * (np.dot(w, w))
+    elif reg == 'l1':
+        obj += alpha * np.sum(np.abs(w))
+    else:
+        raise NotImplementedError
     return obj
 
 
-def grad_margin(x0, X, y, alpha, n_class, weights, L, sample_weight):
+def grad_margin(x0, X, y, alpha, n_class, weights, L, sample_weight, reg):
     """
     Gradient for the general margin-based formulation
     """
@@ -72,7 +77,12 @@ def grad_margin(x0, X, y, alpha, n_class, weights, L, sample_weight):
     if sample_weight is not None:
         Sigma *= sample_weight
 
-    grad_w = X.T.dot(Sigma.sum(0)) + alpha * w
+    if reg == 'l2':
+        grad_w = X.T.dot(Sigma.sum(0)) + alpha * w
+    elif reg == 'l1':
+        grad_w = X.T.dot(Sigma.sum(0)) + alpha * np.sign(w)
+    else:
+        raise NotImplementedError
 
     grad_theta = -Sigma.sum(1)
     grad_c = L.T.dot(grad_theta)
@@ -81,7 +91,7 @@ def grad_margin(x0, X, y, alpha, n_class, weights, L, sample_weight):
 
 def threshold_fit(X, y, alpha, n_class, mode='AE',
                   max_iter=1000, verbose=False, tol=1e-12,
-                  sample_weight=None):
+                  sample_weight=None, reg='l2'):
     """
     Solve the general threshold-based ordinal regression model
     using the logistic loss as surrogate of the 0-1 loss
@@ -131,7 +141,7 @@ def threshold_fit(X, y, alpha, n_class, mode='AE',
 
     sol = optimize.minimize(obj_margin, x0, method='L-BFGS-B',
         jac=grad_margin, bounds=bounds, options=options,
-        args=(X, y, alpha, n_class, loss_fd, L, sample_weight),
+        args=(X, y, alpha, n_class, loss_fd, L, sample_weight, reg),
         tol=tol)
     if verbose and not sol.success:
         print(sol.message)
@@ -172,7 +182,7 @@ class LogisticAT(base.BaseEstimator):
     ----------
     alpha: float
         Regularization parameter. Zero is no regularization, higher values
-        increate the squared l2 regularization.
+        increate the squared l2 or l1 regularization.
 
     References
     ----------
@@ -180,10 +190,11 @@ class LogisticAT(base.BaseEstimator):
     Regression with Discrete Ordered Labels," in Proceedings of the IJCAI
     Multidisciplinary Workshop on Advances in Preference Handling, 2005.
     """
-    def __init__(self, alpha=1., verbose=0, max_iter=1000):
+    def __init__(self, alpha=1., verbose=0, max_iter=1000, reg='l2'):
         self.alpha = alpha
         self.verbose = verbose
         self.max_iter = max_iter
+        self.reg = reg
 
     def fit(self, X, y, sample_weight=None):
         _y = np.array(y).astype(np.int)
@@ -195,7 +206,7 @@ class LogisticAT(base.BaseEstimator):
         self.coef_, self.theta_ = threshold_fit(
             X, y_tmp, self.alpha, self.n_class_, mode='AE',
             verbose=self.verbose, max_iter=self.max_iter,
-            sample_weight=sample_weight)
+            sample_weight=sample_weight, reg=self.reg)
         return self
 
     def predict(self, X):
@@ -228,7 +239,7 @@ class LogisticIT(base.BaseEstimator):
     ----------
     alpha: float
         Regularization parameter. Zero is no regularization, higher values
-        increate the squared l2 regularization.
+        increate the squared l2 or l1 regularization.
 
     References
     ----------
@@ -236,10 +247,11 @@ class LogisticIT(base.BaseEstimator):
     Regression with Discrete Ordered Labels," in Proceedings of the IJCAI
     Multidisciplinary Workshop on Advances in Preference Handling, 2005.
     """
-    def __init__(self, alpha=1., verbose=0, max_iter=1000):
+    def __init__(self, alpha=1., verbose=0, max_iter=1000, reg='l2'):
         self.alpha = alpha
         self.verbose = verbose
         self.max_iter = max_iter
+        self.reg = reg
 
     def fit(self, X, y, sample_weight=None):
         _y = np.array(y).astype(np.int)
@@ -251,7 +263,7 @@ class LogisticIT(base.BaseEstimator):
         self.coef_, self.theta_ = threshold_fit(
             X, y_tmp, self.alpha, self.n_class_,
             mode='0-1', verbose=self.verbose, max_iter=self.max_iter,
-            sample_weight=sample_weight)
+            sample_weight=sample_weight, reg=self.reg)
         return self
 
     def predict(self, X):
@@ -283,7 +295,7 @@ class LogisticSE(base.BaseEstimator):
     ----------
     alpha: float
         Regularization parameter. Zero is no regularization, higher values
-        increase the squared l2 regularization.
+        increase the squared l2 or l1 regularization.
 
     References
     ----------
@@ -291,10 +303,11 @@ class LogisticSE(base.BaseEstimator):
     Regression with Discrete Ordered Labels," in Proceedings of the IJCAI
     Multidisciplinary Workshop on Advances in Preference Handling, 2005.
     """
-    def __init__(self, alpha=1., verbose=0, max_iter=100000):
+    def __init__(self, alpha=1., verbose=0, max_iter=100000, reg='l2'):
         self.alpha = alpha
         self.verbose = verbose
         self.max_iter = max_iter
+        self.reg = reg
 
     def fit(self, X, y, sample_weight=None):
         _y = np.array(y).astype(np.int)
@@ -306,7 +319,7 @@ class LogisticSE(base.BaseEstimator):
         self.coef_, self.theta_ = threshold_fit(
             X, y_tmp, self.alpha, self.n_class_,
             mode='SE', verbose=self.verbose, max_iter=self.max_iter,
-            sample_weight=sample_weight)
+            sample_weight=sample_weight, reg=self.reg)
         return self
 
     def predict(self, X):
