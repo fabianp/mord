@@ -14,4 +14,4 @@ Github repo: http://github.com/fabianp/mord
 References
 ----------
 
-Pedregosa, Fabian, Francis Bach, and Alexandre Gramfort. "On the consistency of ordinal regression methods." The Journal of Machine Learning Research 18.1 (2017) [JMLR](http://jmlr.csail.mit.edu/papers/v18/15-495.html).
+Pedregosa, Fabian, Francis Bach, and Alexandre Gramfort. "On the consistency of ordinal regression methods." The Journal of Machine Learning Research 18.1 (2017) `JMLR <http://jmlr.csail.mit.edu/papers/v18/15-495.html>`_.
