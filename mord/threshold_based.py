@@ -30,6 +30,11 @@ def log_loss(Z):
     return out
 
 
+def prox(w, alpha):
+    # proximal operator
+    return np.array([wi - np.sign(wi) * alpha if np.abs(wi) > alpha else 0 for wi in w])
+
+
 def obj_margin(x0, X, y, alpha, n_class, weights, L, sample_weight, reg):
     """
     Objective function for the general margin-based formulation
@@ -80,7 +85,7 @@ def grad_margin(x0, X, y, alpha, n_class, weights, L, sample_weight, reg):
     if reg == 'l2':
         grad_w = X.T.dot(Sigma.sum(0)) + alpha * w
     elif reg == 'l1':
-        grad_w = X.T.dot(Sigma.sum(0)) + alpha * np.sign(w)
+        grad_w = w - prox(w - X.T.dot(Sigma.sum(0)), alpha)
     else:
         raise NotImplementedError
 
