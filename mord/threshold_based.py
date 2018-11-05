@@ -8,6 +8,7 @@ import numpy as np
 from scipy import optimize
 from sklearn import base, metrics
 from sklearn.utils.validation import check_X_y
+from lbfgs import fmin_lbfgs
 
 
 def sigmoid(t):
@@ -28,11 +29,6 @@ def log_loss(Z):
     out[idx] = np.log(1 + np.exp(-Z[idx]))
     out[~idx] = (-Z[~idx] + np.log(1 + np.exp(Z[~idx])))
     return out
-
-
-def prox(w, alpha):
-    # proximal operator
-    return np.array([wi - np.sign(wi) * alpha if np.abs(wi) > alpha else 0 for wi in w])
 
 
 def obj_margin(x0, X, y, alpha, n_class, weights, L, sample_weight, reg):
@@ -85,13 +81,18 @@ def grad_margin(x0, X, y, alpha, n_class, weights, L, sample_weight, reg):
     if reg == 'l2':
         grad_w = X.T.dot(Sigma.sum(0)) + alpha * w
     elif reg == 'l1':
-        grad_w = w - prox(w - X.T.dot(Sigma.sum(0)), alpha)
+        grad_w = X.T.dot(Sigma.sum(0)) + alpha * np.sign(w)
     else:
         raise NotImplementedError
 
     grad_theta = -Sigma.sum(1)
     grad_c = L.T.dot(grad_theta)
     return np.concatenate((grad_w, grad_c), axis=0)
+
+
+def owl_qn_obj(x0, g, *args):
+    g[:] = grad_margin(x0, *args)
+    return obj_margin(x0, *args)
 
 
 def threshold_fit(X, y, alpha, n_class, mode='AE',
@@ -144,14 +145,23 @@ def threshold_fit(X, y, alpha, n_class, mode='AE',
     else:
         bounds = None
 
-    sol = optimize.minimize(obj_margin, x0, method='L-BFGS-B',
-        jac=grad_margin, bounds=bounds, options=options,
-        args=(X, y, alpha, n_class, loss_fd, L, sample_weight, reg),
-        tol=tol)
-    if verbose and not sol.success:
-        print(sol.message)
+    if reg == 'l2':
+        sol = optimize.minimize(obj_margin, x0, method='L-BFGS-B',
+            jac=grad_margin, bounds=bounds, options=options,
+            args=(X, y, alpha, n_class, loss_fd, L, sample_weight, reg),
+            tol=tol)
+        if verbose and not sol.success:
+            print(sol.message)
 
-    w, c = sol.x[:X.shape[1]], sol.x[X.shape[1]:]
+        w, c = sol.x[:X.shape[1]], sol.x[X.shape[1]:]
+
+    elif reg == 'l1':
+        sol_x = fmin_lbfgs(lambda x0, g: owl_qn_obj(x0, g, X, y, alpha, n_class, loss_fd, L, sample_weight, reg),
+                           x0, orthantwise_c=1, line_search='wolfe')
+        w, c = sol_x[:X.shape[1]], sol_x[X.shape[1]:]
+    else: 
+        raise NotImplementedError
+
     theta = L.dot(c)
     return w, theta
 
