@@ -5,7 +5,7 @@ from sklearn import linear_model, svm, metrics
 class OrdinalRidge(linear_model.Ridge):
     """
     Overwrite Ridge from scikit-learn to use
-    the (minus) absolute error as score function.
+    the (minus) squared error as score function.
 
     (see https://github.com/scikit-learn/scikit-learn/issues/3848
     on why this cannot be accomplished using a GridSearchCV object)
