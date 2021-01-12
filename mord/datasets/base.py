@@ -46,9 +46,11 @@ def load_housing():
     each obs by index based on the number the frequency ('Freq')
     of appearance
     '''
+
+    # Pandas has deprecated ".ix", so it has to be replaced with "iloc"
     index = np.asarray(range(0, data.shape[0])).\
-        repeat(data.ix[:,'Freq'].values)
-    data = data.ix[index,:]
+        repeat(data['Freq'].values)
+    data = data.iloc[index,:]
     features = ('Infl', 'Type', 'Cont')
 
     return Bunch(data=data.loc[:,features],
