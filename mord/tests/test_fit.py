@@ -3,7 +3,6 @@ from scipy import stats, optimize, sparse
 import mord
 import functools
 import pytest
-# from nose.tools import assert_almost_equal, assert_greater_equal, assert_less
 
 np.random.seed(0)
 from sklearn import datasets, metrics, linear_model
