@@ -17,5 +17,5 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - run: python --version
-      - run: pip install --upgrade pip nose numpy pandas scipy scikit-learn
-      - run: nosetests
+      - run: pip install --upgrade pip pytest numpy pandas scipy scikit-learn
+      - run: pytest
