@@ -186,7 +186,7 @@ class LogisticAT(base.BaseEstimator):
         self.max_iter = max_iter
 
     def fit(self, X, y, sample_weight=None):
-        _y = np.array(y).astype(int)
+        _y = np.array(y).astype(np.int)
         if np.abs(_y - y).sum() > 0.1:
             raise ValueError('y must only contain integer values')
         self.classes_ = np.unique(y)
