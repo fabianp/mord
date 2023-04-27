@@ -1,7 +1,7 @@
 from os.path import dirname, join
 
 import numpy as np
-from sklearn.datasets.base import Bunch
+from sklearn.utils import Bunch
 
 def load_housing():
     from pandas import read_csv

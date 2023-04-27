@@ -146,7 +146,7 @@ def threshold_predict(X, w, theta):
     Class numbers are assumed to be between 0 and k-1
     """
     tmp = theta[:, None] - np.asarray(X.dot(w))
-    pred = np.sum(tmp < 0, axis=0).astype(np.int)
+    pred = np.sum(tmp < 0, axis=0).astype(int)
     return pred
 
 
@@ -186,7 +186,7 @@ class LogisticAT(base.BaseEstimator):
         self.max_iter = max_iter
 
     def fit(self, X, y, sample_weight=None):
-        _y = np.array(y).astype(np.int)
+        _y = np.array(y).astype(int)
         if np.abs(_y - y).sum() > 0.1:
             raise ValueError('y must only contain integer values')
         self.classes_ = np.unique(y)
@@ -242,7 +242,7 @@ class LogisticIT(base.BaseEstimator):
         self.max_iter = max_iter
 
     def fit(self, X, y, sample_weight=None):
-        _y = np.array(y).astype(np.int)
+        _y = np.array(y).astype(int)
         if np.abs(_y - y).sum() > 0.1:
             raise ValueError('y must only contain integer values')
         self.classes_ = np.unique(y)
@@ -297,7 +297,7 @@ class LogisticSE(base.BaseEstimator):
         self.max_iter = max_iter
 
     def fit(self, X, y, sample_weight=None):
-        _y = np.array(y).astype(np.int)
+        _y = np.array(y).astype(int)
         if np.abs(_y - y).sum() > 1e-3:
             raise ValueError('y must only contain integer values')
         self.classes_ = np.unique(y)

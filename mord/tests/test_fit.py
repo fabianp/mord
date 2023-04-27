@@ -2,7 +2,7 @@ import numpy as np
 from scipy import stats, optimize, sparse
 import mord
 import functools
-from nose.tools import assert_almost_equal, assert_greater_equal, assert_less
+import pytest
 
 np.random.seed(0)
 from sklearn import datasets, metrics, linear_model
@@ -79,19 +79,15 @@ def test_grad():
         return mord.threshold_based.grad_margin(
             x, X, y, 100.0, n_class, loss_fd, L, sample_weights)
 
-    assert_less(
-        optimize.check_grad(fun, grad, x0),
-        1e-4,
-        msg='unweighted')
+    assert optimize.check_grad(fun, grad, x0) < 1e-4, 'unweighted'
 
     sample_weights = np.random.rand(n_samples)
-    assert_less(
+    assert (
         optimize.check_grad(
             functools.partial(fun, sample_weights=sample_weights),
             functools.partial(grad, sample_weights=sample_weights),
-            x0),
-        1e-4,
-        msg='weighted')
+            x0) < 1e-4
+    ), 'weighted'
 
 
 def test_binary_class():
@@ -103,12 +99,12 @@ def test_binary_class():
     clf = mord.LogisticAT(alpha=1e-6)
     clf.fit(Xc[:500], yc[:500])
     pred_at = clf.predict(Xc[500:])
-    assert_almost_equal(np.abs(pred_lr - pred_at).mean(), 0.)
+    assert np.abs(pred_lr - pred_at).mean() == pytest.approx(0)
 
     clf2 = mord.LogisticSE(alpha=1e-6)
     clf2.fit(Xc[:500], yc[:500])
     pred_at = clf2.predict(Xc[500:])
-    assert_almost_equal(np.abs(pred_lr - pred_at).mean(), 0.)
+    assert np.abs(pred_lr - pred_at).mean() == pytest.approx(0)
 
 # def test_performance():
 #     clf1 = mord.LogisticAT()
@@ -123,7 +119,7 @@ def test_predict_proba_nonnegative():
 
     def check_for_negative_prob(proba):
         for p in np.ravel(proba):
-            assert_greater_equal(np.round(p,7), 0)
+            assert np.round(p,7) >= 0
 
     clf = mord.LogisticAT(alpha=0.)
     clf.fit(X, y)
